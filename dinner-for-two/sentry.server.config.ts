@@ -5,34 +5,15 @@
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  dsn: "https://1f20202250984298ee551e42cf7482a6@o4510357410611200.ingest.de.sentry.io/4510495304712272",
 
-  // Adjust this value in production, or use tracesSampler for greater control
+  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,
 
-  // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: false,
+  // Enable logs to be sent to Sentry
+  enableLogs: true,
 
-  // Filter out known errors that we don't want to track
-  beforeSend(event, hint) {
-    const error = hint.originalException;
-    
-    // Ignore validation errors (they're expected and handled)
-    if (error instanceof Error) {
-      const message = error.message.toLowerCase();
-      if (
-        message.includes('valid dish name') ||
-        message.includes('invalid_input') ||
-        message.includes('не название блюда') ||
-        message.includes('not a food-related') ||
-        message.includes('связанное с едой')
-      ) {
-        return null; // Don't send to Sentry
-      }
-    }
-
-    return event;
-  },
+  // Enable sending user PII (Personally Identifiable Information)
+  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
+  sendDefaultPii: true,
 });
-
-
