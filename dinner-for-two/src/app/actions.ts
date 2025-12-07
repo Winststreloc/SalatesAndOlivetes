@@ -1,11 +1,15 @@
 'use server'
 
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import OpenAI from 'openai'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
+// Initialize AIML (OpenAI compatible) client
+const openai = new OpenAI({
+  apiKey: process.env.AIML_API_KEY,
+  baseURL: "https://api.aimlapi.com/v1",
+})
 
 export async function addDish(dishName: string, dayOfWeek?: number) {
   const user = await getUserFromSession()
@@ -40,29 +44,31 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   let recipe: string = ''
   
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-    const prompt = `
-      You are a chef. 
-      Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}" and a key 'recipe' containing cooking instructions.
-      Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
-      
-      Each ingredient must have:
-      - 'name' (string, ${lang === 'ru' ? 'in Russian' : 'in English'})
-      - 'amount' (number)
-      - 'unit' (string, e.g. kg, g, pcs, ml)
-      
-      The 'recipe' should be a string with steps formatted nicely (you can use newlines or simple markdown).
-      
-      Output ONLY raw JSON without markdown formatting.
-    `
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: `You are a chef. 
+          Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish and a key 'recipe' containing cooking instructions.
+          Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
+          
+          Each ingredient must have:
+          - 'name' (string, ${lang === 'ru' ? 'in Russian' : 'in English'})
+          - 'amount' (number or string)
+          - 'unit' (string, e.g. kg, g, pcs, ml)
+          
+          The 'recipe' should be a string with steps formatted nicely (markdown allowed).
+          Return ONLY JSON.` 
+        },
+        { role: "user", content: `Dish: ${dishName}` }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const content = completion.choices[0].message.content
+    const parsed = JSON.parse(content || '{}')
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let text = response.text();
-    
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    const parsed = JSON.parse(text);
     if (Array.isArray(parsed.ingredients)) {
         ingredients = parsed.ingredients
     }
@@ -71,7 +77,7 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     }
   } catch (e) {
     console.error('AI Generation failed', e)
-    return { success: false, error: 'AI failed' }
+    // Don't fail the whole action, just skip AI part
   }
 
   // Update dish with recipe
@@ -239,30 +245,37 @@ export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {
     if ([...sides, ...proteins, ...veggies, ...treats, ...cuisines].length === 0) return []
     
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const prompt = `
-          You are a creative chef. Suggest 4 distinct dinner ideas based on these user preferences:
-          
-          Preferred Sides: ${sides.join(', ') || 'Any'}
-          Preferred Proteins: ${proteins.join(', ') || 'Any'}
-          Preferred Veggies: ${veggies.join(', ') || 'Any'}
-          Cuisines: ${cuisines.join(', ') || 'Any'}
-          Treats/Cheat meal desires: ${treats.join(', ')}
-          
-          Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { 
+              role: "system", 
+              content: `You are a creative chef. Suggest 4 distinct dinner ideas based on preferences.
+              Return ONLY a JSON object with a key 'ideas' containing an array of strings (dish names).
+              Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.` 
+            },
+            { 
+              role: "user", 
+              content: `
+              Preferred Sides: ${sides.join(', ') || 'Any'}
+              Preferred Proteins: ${proteins.join(', ') || 'Any'}
+              Preferred Veggies: ${veggies.join(', ') || 'Any'}
+              Cuisines: ${cuisines.join(', ') || 'Any'}
+              Treats/Cheat meal desires: ${treats.join(', ')}
+              
+              Guidelines:
+              1. Mix comfort food and healthy options based on choices.
+              2. If 'Treats' are selected, include at least one option from there.
+              3. Use different cooking methods.
+              4. Suggest COMPLETE dish names.` 
+            }
+          ],
+          response_format: { type: "json_object" }
+        });
 
-          Guidelines:
-          1. Mix comfort food and healthy options based on choices.
-          2. If 'Treats' are selected, include at least one option from there.
-          3. Use different cooking methods.
-          4. Suggest COMPLETE dish names ${lang === 'ru' ? '(e.g. "Курица гриль с овощами")' : '(e.g. "Grilled Chicken with Vegetables")'}.
-          
-          Return ONLY a JSON array of strings (dish names). Example: ["Fried Chicken with Rice", "Baked Fish with Potatoes"]
-        `
-        const result = await model.generateContent(prompt);
-        const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const ideas = JSON.parse(text);
-        return Array.isArray(ideas) ? ideas : []
+        const content = completion.choices[0].message.content
+        const parsed = JSON.parse(content || '{}')
+        return Array.isArray(parsed.ideas) ? parsed.ideas : []
     } catch (e) {
         console.error(e)
         return []
