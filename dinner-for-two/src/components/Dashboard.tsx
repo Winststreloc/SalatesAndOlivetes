@@ -24,7 +24,6 @@ import { groupByCategory, IngredientCategory, CategorizedIngredient } from '@/ut
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
 import { showToast } from '@/utils/toast'
-import { useSwipeable } from 'react-swipeable'
 import { DishSkeleton } from './LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
 import { triggerHaptic } from '@/utils/haptics'
@@ -1162,33 +1161,52 @@ export function Dashboard() {
                                    
                                    <div className="p-2 space-y-2 min-h-[50px]">
                                        {dishesByDay[dayIndex].map((dish, index) => {
-                                           const swipeHandlers = useSwipeable({
-                                             onSwipedLeft: () => {
-                                               handleDeleteDish(dish.id)
-                                             },
-                                             onSwipedRight: () => {
-                                               if (dish.status === 'proposed' && ((dish.created_by !== user?.id && hasPartnerUser) || (dish.created_by === user?.id && !hasPartnerUser))) {
-                                                 handleToggleDish(dish.id, dish.status)
+                                           // Create swipe handlers without using hook (hooks can't be called in loops)
+                                           const swipeHandlers = {
+                                             onTouchStart: (e: React.TouchEvent) => {
+                                               const touch = e.touches[0]
+                                               const startX = touch.clientX
+                                               const startY = touch.clientY
+                                               
+                                               const handleTouchMove = (moveEvent: TouchEvent) => {
+                                                 const currentTouch = moveEvent.touches[0]
+                                                 const deltaX = currentTouch.clientX - startX
+                                                 const deltaY = currentTouch.clientY - startY
+                                                 
+                                                 // Only handle horizontal swipes
+                                                 if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                                                   if (deltaX > 0) {
+                                                     // Swipe right
+                                                     if (dish.status === 'proposed' && ((dish.created_by !== user?.id && hasPartnerUser) || (dish.created_by === user?.id && !hasPartnerUser))) {
+                                                       handleToggleDish(dish.id, dish.status)
+                                                     }
+                                                   } else {
+                                                     // Swipe left
+                                                     handleDeleteDish(dish.id)
+                                                   }
+                                                   document.removeEventListener('touchmove', handleTouchMove)
+                                                   document.removeEventListener('touchend', handleTouchEnd)
+                                                 }
                                                }
-                                             },
-                                             trackMouse: false,
-                                             trackTouch: true,
-                                             preventScrollOnSwipe: true
-                                           })
+                                               
+                                               const handleTouchEnd = () => {
+                                                 document.removeEventListener('touchmove', handleTouchMove)
+                                                 document.removeEventListener('touchend', handleTouchEnd)
+                                               }
+                                               
+                                               document.addEventListener('touchmove', handleTouchMove)
+                                               document.addEventListener('touchend', handleTouchEnd)
+                                             }
+                                           }
                                            
                                            return (
                                            <Draggable key={dish.id} draggableId={dish.id} index={index}>
                                                {(provided: any) => (
                                                    <div
-                                                       ref={(el) => {
-                                                         provided.innerRef(el)
-                                                         if (swipeHandlers.ref) {
-                                                           swipeHandlers.ref(el)
-                                                         }
-                                                       }}
+                                                       ref={provided.innerRef}
                                                        {...provided.draggableProps}
                                                        {...provided.dragHandleProps}
-                                                       {...Object.fromEntries(Object.entries(swipeHandlers).filter(([key]) => key !== 'ref'))}
+                                                       {...swipeHandlers}
                                                        className={`border border-border rounded p-3 relative group bg-card ${dish.status === 'proposed' ? 'border-dashed border-orange-300' : 'border-green-500'}`}
                                                        style={{ ...provided.draggableProps.style }}
                                                    >
