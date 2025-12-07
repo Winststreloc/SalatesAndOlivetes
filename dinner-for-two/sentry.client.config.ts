@@ -6,12 +6,6 @@ import * as Sentry from "@sentry/nextjs";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
-console.log('🔧 Sentry initialization:', {
-  hasDsn: !!dsn,
-  dsnLength: dsn?.length || 0,
-  dsnPreview: dsn ? `${dsn.substring(0, 20)}...` : 'NOT SET',
-});
-
 if (!dsn) {
   console.error('❌ NEXT_PUBLIC_SENTRY_DSN is not set! Sentry will not work.');
 }
@@ -23,7 +17,7 @@ Sentry.init({
   tracesSampleRate: 1,
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: true, // Enable debug mode to see what's happening
+  debug: false,
 
   replaysOnErrorSampleRate: 1.0,
 
@@ -42,14 +36,6 @@ Sentry.init({
 
   // Filter out known errors that we don't want to track
   beforeSend(event, hint) {
-    console.log('📤 [Sentry beforeSend] Event:', {
-      type: event.type,
-      level: event.level,
-      message: event.message,
-      exception: event.exception?.values?.[0]?.value,
-      tags: event.tags,
-    });
-
     const error = hint.originalException;
     
     // Ignore validation errors (they're expected and handled)
@@ -62,7 +48,6 @@ Sentry.init({
         message.includes('not a food-related') ||
         message.includes('связанное с едой')
       ) {
-        console.log('🚫 [Sentry beforeSend] Filtering out validation error');
         return null; // Don't send to Sentry
       }
     }
@@ -77,7 +62,6 @@ Sentry.init({
       });
     }
 
-    console.log('✅ [Sentry beforeSend] Event will be sent, event ID:', event.event_id);
     return event;
   },
 });
@@ -104,31 +88,6 @@ if (typeof window !== 'undefined') {
       tags: { error_type: 'unhandled_promise_rejection' },
     });
   });
-
-  // Test message to verify Sentry is working
-  if (dsn) {
-    console.log('🧪 Sending test message to Sentry...');
-    console.log('📊 Sentry client status:', Sentry.getClient() ? 'initialized' : 'not initialized');
-    
-    try {
-      const messageId = Sentry.captureMessage('hello', {
-        level: 'info',
-        tags: {
-          test: true,
-          source: 'app_startup',
-        },
-        extra: {
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-        },
-      });
-      console.log('✅ Test message sent to Sentry, message ID:', messageId);
-    } catch (error) {
-      console.error('❌ Failed to send test message to Sentry:', error);
-    }
-  } else {
-    console.warn('⚠️ Skipping test message - DSN not configured');
-  }
 }
 
 
