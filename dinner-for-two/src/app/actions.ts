@@ -112,3 +112,36 @@ export async function toggleIngredientsPurchased(ingredientIds: string[], isPurc
    
    revalidatePath('/')
 }
+
+export async function deleteDish(dishId: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) throw new Error('Unauthorized')
+    
+    const supabase = await createServerSideClient()
+
+    // Delete ingredients first (if no cascade)
+    // Actually our schema has ON DELETE CASCADE for ingredients so just deleting dish is enough
+    const { error } = await supabase
+      .from('dishes')
+      .delete()
+      .eq('id', dishId)
+      .eq('couple_id', user.couple_id)
+      
+    if (error) throw new Error(error.message)
+    
+    revalidatePath('/')
+}
+
+export async function getInviteCode() {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) return null
+
+    const supabase = await createServerSideClient()
+    const { data } = await supabase
+        .from('couples')
+        .select('invite_code')
+        .eq('id', user.couple_id)
+        .single()
+        
+    return data?.invite_code
+}

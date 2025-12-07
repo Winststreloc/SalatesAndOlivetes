@@ -24,7 +24,10 @@ const translations = {
     invalidCode: "Invalid code",
     failedJoin: "Failed to join",
     failedAdd: "Failed to add dish",
-    loading: "..."
+    loading: "...",
+    inviteCode: "Your Invite Code",
+    delete: "Delete",
+    close: "Close"
   },
   ru: {
     startNew: "Создать пару",
@@ -45,7 +48,10 @@ const translations = {
     invalidCode: "Неверный код",
     failedJoin: "Не удалось присоединиться",
     failedAdd: "Не удалось добавить блюдо",
-    loading: "..."
+    loading: "...",
+    inviteCode: "Ваш код приглашения",
+    delete: "Удалить",
+    close: "Закрыть"
   }
 }
 
@@ -84,4 +90,3 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 }
 
 export const useLang = () => useContext(LanguageContext)
-

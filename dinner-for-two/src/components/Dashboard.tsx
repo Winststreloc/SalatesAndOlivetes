@@ -1,26 +1,35 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased } from '@/app/actions'
+import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
+import { Trash2, Key } from 'lucide-react'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
   const [tab, setTab] = useState<'add' | 'list'>('add')
   const [dishes, setDishes] = useState<any[]>([])
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteCode, setInviteCode] = useState<string | null>(null)
   
   const refreshDishes = async () => {
     const data = await getDishes()
     setDishes(data)
   }
 
+  const loadInviteCode = async () => {
+      const code = await getInviteCode()
+      setInviteCode(code)
+  }
+
   useEffect(() => {
     refreshDishes()
+    loadInviteCode()
   }, [])
 
   const handleToggleDish = async (id: string, currentStatus: string) => {
@@ -28,6 +37,13 @@ export function Dashboard() {
     setDishes(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus === 'selected' ? 'proposed' : 'selected' } : d))
     await toggleDishSelection(id, currentStatus !== 'selected')
     refreshDishes()
+  }
+  
+  const handleDeleteDish = async (id: string) => {
+      if (!confirm('Are you sure?')) return
+      setDishes(prev => prev.filter(d => d.id !== id))
+      await deleteDish(id)
+      refreshDishes()
   }
 
   const shoppingList = useMemo(() => {
@@ -76,12 +92,36 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-       <div className="flex justify-end p-2 bg-white border-b">
+    <div className="flex flex-col h-screen bg-gray-50 relative">
+       {/* Header */}
+       <div className="flex justify-between p-3 bg-white border-b items-center shadow-sm">
+         <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
+            <Key className="h-4 w-4" />
+         </Button>
+         <h1 className="font-semibold text-sm text-gray-700">Dinner for Two</h1>
          <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
             {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
          </Button>
        </div>
+
+       {/* Invite Modal Overlay */}
+       {showInvite && (
+           <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+               <Card className="w-full max-w-sm">
+                   <CardHeader>
+                       <CardHeader className="p-4 font-bold text-center">{t.inviteCode}</CardHeader>
+                   </CardHeader>
+                   <CardContent className="text-center pb-6">
+                       <div className="p-3 bg-gray-100 rounded font-mono select-all text-xl font-bold mb-4">
+                           {inviteCode || '...'}
+                       </div>
+                       <Button onClick={() => setShowInvite(false)}>{t.close}</Button>
+                   </CardContent>
+               </Card>
+           </div>
+       )}
+
+       {/* Content */}
        <div className="flex-1 overflow-auto p-4 pb-24">
           <h1 className="text-xl font-bold mb-4">
              {tab === 'add' ? t.planMenu : t.shoppingList}
@@ -93,19 +133,22 @@ export function Dashboard() {
               <div className="space-y-3">
                  {dishes.map(dish => (
                    <Card key={dish.id} className={dish.status === 'selected' ? 'border-green-500 border-2' : ''}>
-                     <CardHeader className="p-4 pb-2">
-                        <div className="flex items-center space-x-2">
+                     <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between space-y-0">
+                        <div className="flex items-center space-x-2 flex-1">
                            <Checkbox 
                              id={`dish-${dish.id}`} 
                              checked={dish.status === 'selected'}
                              onCheckedChange={() => handleToggleDish(dish.id, dish.status)}
                            />
-                           <Label htmlFor={`dish-${dish.id}`} className="text-base font-semibold cursor-pointer flex-1">
+                           <Label htmlFor={`dish-${dish.id}`} className="text-base font-semibold cursor-pointer flex-1 ml-2">
                              {dish.name}
                            </Label>
                         </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => handleDeleteDish(dish.id)}>
+                             <Trash2 className="h-4 w-4" />
+                        </Button>
                      </CardHeader>
-                     <CardContent className="p-4 pt-0 pl-10">
+                     <CardContent className="p-3 pt-0 pl-9">
                         <p className="text-xs text-gray-500">
                           {dish.ingredients?.map((i: any) => i.name).join(', ')}
                         </p>
