@@ -14,7 +14,7 @@ const translations = {
     shareCode: "Share this code with your partner:",
     waiting: "Waiting for partner...",
     refresh: "Refresh",
-    planMenu: "Plan Menu",
+    planMenu: "Weekly Menu",
     shoppingList: "Shopping List",
     addDishPlaceholder: "Dish name (e.g. Pasta)",
     add: "Add",
@@ -29,7 +29,10 @@ const translations = {
     delete: "Delete",
     close: "Close",
     shareLink: "Send to Partner",
-    copied: "Copied!"
+    copied: "Copied!",
+    generating: "Generating recipe...",
+    days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    addForDay: "Add for"
   },
   ru: {
     startNew: "Создать пару",
@@ -40,7 +43,7 @@ const translations = {
     shareCode: "Отправьте этот код партнеру:",
     waiting: "Ждем партнера...",
     refresh: "Обновить",
-    planMenu: "Меню",
+    planMenu: "Меню на неделю",
     shoppingList: "Список покупок",
     addDishPlaceholder: "Название блюда (напр. Борщ)",
     add: "Добавить",
@@ -55,7 +58,10 @@ const translations = {
     delete: "Удалить",
     close: "Закрыть",
     shareLink: "Отправить партнеру",
-    copied: "Скопировано!"
+    copied: "Скопировано!",
+    generating: "Ищем ингредиенты...",
+    days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
+    addForDay: "Добавить на"
   }
 }
 
@@ -68,10 +74,17 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType>({} as LanguageContextType)
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Language>('ru') // Default to RU based on request
+  const [lang, setLangState] = useState<Language>('ru') 
 
   useEffect(() => {
-    // Try to detect telegram language
+    // 1. Check localStorage
+    const saved = localStorage.getItem('dft-lang') as Language
+    if (saved && (saved === 'ru' || saved === 'en')) {
+        setLangState(saved)
+        return
+    }
+
+    // 2. Check Telegram
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code) {
         const tgLang = window.Telegram.WebApp.initDataUnsafe.user.language_code
         if (tgLang === 'ru' || tgLang.startsWith('ru-')) {
@@ -84,6 +97,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const setLang = (l: Language) => {
       setLangState(l)
+      localStorage.setItem('dft-lang', l)
   }
 
   return (

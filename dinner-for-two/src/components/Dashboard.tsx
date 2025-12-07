@@ -8,14 +8,18 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
-import { Trash2, Key, Share2 } from 'lucide-react'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
-  const [tab, setTab] = useState<'add' | 'list'>('add')
+  const [tab, setTab] = useState<'plan' | 'list'>('plan')
   const [dishes, setDishes] = useState<any[]>([])
   const [showInvite, setShowInvite] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
+  
+  // Track which day is currently adding a dish
+  const [addingDay, setAddingDay] = useState<number | null>(null)
   
   const refreshDishes = async () => {
     const data = await getDishes()
@@ -30,6 +34,9 @@ export function Dashboard() {
   useEffect(() => {
     refreshDishes()
     loadInviteCode()
+    
+    const interval = setInterval(refreshDishes, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   const handleToggleDish = async (id: string, currentStatus: string) => {
@@ -59,12 +66,13 @@ export function Dashboard() {
   }
 
   const shoppingList = useMemo(() => {
+    // Include all selected dishes OR dishes assigned to a day (which are implicitly selected)
+    // Actually in our logic adding to a day sets status='selected'
     const selectedDishes = dishes.filter(d => d.status === 'selected')
     const map = new Map<string, { name: string, amount: number, unit: string, ids: string[], is_purchased: boolean }>()
     
     selectedDishes.forEach(dish => {
       dish.ingredients.forEach((ing: any) => {
-        // Normalize key
         const key = `${ing.name.trim().toLowerCase()}-${ing.unit?.trim().toLowerCase() || ''}`
         const existing = map.get(key)
         const amount = parseFloat(ing.amount) || 0
@@ -72,7 +80,6 @@ export function Dashboard() {
         if (existing) {
           existing.amount += amount
           existing.ids.push(ing.id)
-          // If any instance is NOT purchased, the aggregated item is NOT purchased
           if (!ing.is_purchased) existing.is_purchased = false 
         } else {
           map.set(key, { 
@@ -91,22 +98,37 @@ export function Dashboard() {
 
   const handleToggleIngredient = async (item: any) => {
     const newStatus = !item.is_purchased
-    // Optimistic
     setDishes(prev => prev.map(d => ({
         ...d,
         ingredients: d.ingredients.map((ing: any) => 
             item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
         )
     })))
-    
     await toggleIngredientsPurchased(item.ids, newStatus)
     refreshDishes()
   }
+  
+  // Group dishes by day
+  const dishesByDay = useMemo(() => {
+      const groups: Record<number, any[]> = {}
+      for(let i=0; i<7; i++) groups[i] = []
+      
+      dishes.forEach(d => {
+          if (d.day_of_week !== null && d.day_of_week !== undefined) {
+              groups[d.day_of_week].push(d)
+          } else {
+              // Handle unscheduled dishes if any (maybe in a separate section or force day selection)
+              // For now, let's assume we only add to days. 
+              // If we have legacy dishes without day, maybe show them in "Ideas"?
+          }
+      })
+      return groups
+  }, [dishes])
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 relative">
        {/* Header */}
-       <div className="flex justify-between p-3 bg-white border-b items-center shadow-sm">
+       <div className="flex justify-between p-3 bg-white border-b items-center shadow-sm z-10">
          <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
             <Key className="h-4 w-4" />
          </Button>
@@ -116,7 +138,7 @@ export function Dashboard() {
          </Button>
        </div>
 
-       {/* Invite Modal Overlay */}
+       {/* Invite Modal */}
        {showInvite && (
            <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                <Card className="w-full max-w-sm">
@@ -140,44 +162,72 @@ export function Dashboard() {
        )}
 
        {/* Content */}
-       <div className="flex-1 overflow-auto p-4 pb-24">
+       <div className="flex-1 overflow-auto p-4 pb-24 scroll-smooth">
           <h1 className="text-xl font-bold mb-4">
-             {tab === 'add' ? t.planMenu : t.shoppingList}
+             {tab === 'plan' ? t.planMenu : t.shoppingList}
           </h1>
           
-          {tab === 'add' ? (
-            <>
-              <AddDishForm onAdded={refreshDishes} />
-              <div className="space-y-3">
-                 {dishes.map(dish => (
-                   <Card key={dish.id} className={dish.status === 'selected' ? 'border-green-500 border-2' : ''}>
-                     <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between space-y-0">
-                        <div className="flex items-center space-x-2 flex-1">
-                           <Checkbox 
-                             id={`dish-${dish.id}`} 
-                             checked={dish.status === 'selected'}
-                             onCheckedChange={() => handleToggleDish(dish.id, dish.status)}
-                           />
-                           <Label htmlFor={`dish-${dish.id}`} className="text-base font-semibold cursor-pointer flex-1 ml-2">
-                             {dish.name}
-                           </Label>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-600" onClick={() => handleDeleteDish(dish.id)}>
-                             <Trash2 className="h-4 w-4" />
-                        </Button>
-                     </CardHeader>
-                     <CardContent className="p-3 pt-0 pl-9">
-                        <p className="text-xs text-gray-500">
-                          {dish.ingredients?.map((i: any) => i.name).join(', ')}
-                        </p>
-                     </CardContent>
-                   </Card>
-                 ))}
-                 {dishes.length === 0 && (
-                   <div className="text-center text-gray-500 mt-8">{t.noDishes}</div>
-                 )}
-              </div>
-            </>
+          {tab === 'plan' ? (
+            <div className="space-y-6">
+               {/* Day Blocks */}
+               {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => (
+                   <div key={dayIndex} className="bg-white rounded-lg shadow-sm border overflow-hidden">
+                       <div className="bg-gray-100 p-3 font-semibold text-gray-700 flex justify-between items-center">
+                           <span>{t.days[dayIndex]}</span>
+                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setAddingDay(dayIndex)}>
+                               <Plus className="h-4 w-4" />
+                           </Button>
+                       </div>
+                       
+                       <div className="p-2 space-y-2">
+                           {/* List dishes for this day */}
+                           {dishesByDay[dayIndex].map(dish => (
+                               <div key={dish.id} className="border rounded p-3 relative group">
+                                   <div className="flex justify-between items-start">
+                                       <div className="font-medium pr-6">{dish.name}</div>
+                                       <button 
+                                          onClick={() => handleDeleteDish(dish.id)}
+                                          className="text-gray-400 hover:text-red-500 absolute top-2 right-2"
+                                       >
+                                           <Trash2 className="h-4 w-4" />
+                                       </button>
+                                   </div>
+                                   <div className="mt-1">
+                                       {dish.ingredients && dish.ingredients.length > 0 ? (
+                                            <p className="text-xs text-gray-500">
+                                              {dish.ingredients.map((i: any) => i.name).join(', ')}
+                                            </p>
+                                        ) : (
+                                            <div className="flex items-center text-xs text-blue-500 animate-pulse">
+                                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                {t.generating}
+                                            </div>
+                                        )}
+                                   </div>
+                               </div>
+                           ))}
+                           
+                           {/* Add Form for this day */}
+                           {addingDay === dayIndex ? (
+                               <AddDishForm 
+                                  day={dayIndex} 
+                                  onAdded={() => {
+                                      setAddingDay(null)
+                                      refreshDishes()
+                                  }} 
+                                  onCancel={() => setAddingDay(null)} 
+                               />
+                           ) : (
+                               dishesByDay[dayIndex].length === 0 && (
+                                   <div className="text-xs text-gray-400 text-center py-2 cursor-pointer hover:text-gray-600" onClick={() => setAddingDay(dayIndex)}>
+                                       + {t.add}
+                                   </div>
+                               )
+                           )}
+                       </div>
+                   </div>
+               ))}
+            </div>
           ) : (
             <div className="space-y-2">
                {shoppingList.length === 0 ? (
@@ -203,8 +253,9 @@ export function Dashboard() {
           )}
        </div>
        
-       <div className="fixed bottom-0 left-0 right-0 border-t p-2 flex justify-around bg-white shadow-up">
-          <Button variant={tab === 'add' ? 'default' : 'ghost'} onClick={() => setTab('add')} className="flex-1 mx-1">
+       <div className="fixed bottom-0 left-0 right-0 border-t p-2 flex justify-around bg-white shadow-up z-20">
+          <Button variant={tab === 'plan' ? 'default' : 'ghost'} onClick={() => setTab('plan')} className="flex-1 mx-1">
+            <Calendar className="w-4 h-4 mr-2" />
             {t.planMenu}
           </Button>
           <Button variant={tab === 'list' ? 'default' : 'ghost'} onClick={() => setTab('list')} className="flex-1 mx-1">

@@ -5,21 +5,40 @@ import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
 
-// Use OpenAI fallback or Google Gemini
-// But here we switch completely to Gemini as requested
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
 
-export async function addDish(dishName: string) {
+export async function addDish(dishName: string, dayOfWeek?: number) {
   const user = await getUserFromSession()
   if (!user || !user.couple_id) throw new Error('Unauthorized')
 
   const supabase = await createServerSideClient()
 
-  // 1. Generate ingredients
+  const { data: dish, error } = await supabase
+    .from('dishes')
+    .insert({
+      couple_id: user.couple_id,
+      name: dishName,
+      status: 'selected', // If added to a day, it is implicitly selected
+      day_of_week: dayOfWeek // 0-6
+    })
+    .select()
+    .single()
+    
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/')
+  return dish
+}
+
+export async function generateDishIngredients(dishId: string, dishName: string) {
+  const user = await getUserFromSession()
+  if (!user || !user.couple_id) throw new Error('Unauthorized')
+  
+  const supabase = await createServerSideClient()
+  
   let ingredients: any[] = []
   
   try {
-    // Using gemini-2.0-flash-exp as requested
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `
       You are a chef. 
@@ -36,7 +55,6 @@ export async function addDish(dishName: string) {
     const response = await result.response;
     let text = response.text();
     
-    // Clean up markdown code blocks if any
     text = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
     const parsed = JSON.parse(text);
@@ -45,25 +63,12 @@ export async function addDish(dishName: string) {
     }
   } catch (e) {
     console.error('AI Generation failed', e)
+    return { success: false, error: 'AI failed' }
   }
 
-  // 2. Save Dish
-  const { data: dish, error } = await supabase
-    .from('dishes')
-    .insert({
-      couple_id: user.couple_id,
-      name: dishName,
-      status: 'proposed'
-    })
-    .select()
-    .single()
-    
-  if (error) throw new Error(error.message)
-
-  // 3. Save Ingredients
   if (ingredients.length > 0) {
     const ingredientsToInsert = ingredients.map((ing: any) => ({
-      dish_id: dish.id,
+      dish_id: dishId,
       name: ing.name,
       amount: String(ing.amount),
       unit: ing.unit,
@@ -71,10 +76,11 @@ export async function addDish(dishName: string) {
     
     await supabase.from('ingredients').insert(ingredientsToInsert)
   }
-
+  
   revalidatePath('/')
-  return dish
+  return { success: true }
 }
+
 
 export async function getDishes() {
   const user = await getUserFromSession()
@@ -86,6 +92,7 @@ export async function getDishes() {
     .from('dishes')
     .select('*, ingredients(*)')
     .eq('couple_id', user.couple_id)
+    .order('day_of_week', { ascending: true }) // Order by day
     .order('created_at', { ascending: false })
     
   return data || []

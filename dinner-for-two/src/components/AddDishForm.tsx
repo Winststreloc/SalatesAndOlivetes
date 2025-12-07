@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { addDish } from '@/app/actions'
+import { addDish, generateDishIngredients } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLang } from './LanguageProvider'
 
-export function AddDishForm({ onAdded }: { onAdded: () => void }) {
+export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: () => void, onCancel: () => void }) {
   const { t } = useLang()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -17,9 +17,16 @@ export function AddDishForm({ onAdded }: { onAdded: () => void }) {
     
     setLoading(true)
     try {
-      await addDish(name)
+      // 1. Fast add with day
+      const dish = await addDish(name, day)
       setName('')
-      onAdded()
+      onAdded() 
+      
+      // 2. Async generate
+      generateDishIngredients(dish.id, dish.name).then(() => {
+          onAdded() 
+      })
+      
     } catch (e) {
       alert(t.failedAdd)
     } finally {
@@ -28,15 +35,20 @@ export function AddDishForm({ onAdded }: { onAdded: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
+    <form onSubmit={handleSubmit} className="flex gap-2 p-2 bg-gray-50 rounded">
       <Input 
+        autoFocus
         placeholder={t.addDishPlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
         disabled={loading}
+        className="bg-white"
       />
-      <Button type="submit" disabled={loading}>
-        {loading ? t.loading : t.add}
+      <Button type="submit" disabled={loading} size="sm">
+        {loading ? '...' : t.add}
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={loading}>
+          ✕
       </Button>
     </form>
   )
