@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode } from '@/app/actions'
+import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
 import { Trash2, Key, Share2, Loader2, Plus, Calendar } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -17,8 +17,6 @@ export function Dashboard() {
   const [dishes, setDishes] = useState<any[]>([])
   const [showInvite, setShowInvite] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
-  
-  // Track which day is currently adding a dish
   const [addingDay, setAddingDay] = useState<number | null>(null)
   
   const refreshDishes = async () => {
@@ -34,13 +32,11 @@ export function Dashboard() {
   useEffect(() => {
     refreshDishes()
     loadInviteCode()
-    
     const interval = setInterval(refreshDishes, 5000)
     return () => clearInterval(interval)
   }, [])
 
   const handleToggleDish = async (id: string, currentStatus: string) => {
-    // Optimistic update
     setDishes(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus === 'selected' ? 'proposed' : 'selected' } : d))
     await toggleDishSelection(id, currentStatus !== 'selected')
     refreshDishes()
@@ -66,16 +62,21 @@ export function Dashboard() {
   }
 
   const shoppingList = useMemo(() => {
-    // Include all selected dishes OR dishes assigned to a day (which are implicitly selected)
-    // Actually in our logic adding to a day sets status='selected'
     const selectedDishes = dishes.filter(d => d.status === 'selected')
     const map = new Map<string, { name: string, amount: number, unit: string, ids: string[], is_purchased: boolean }>()
     
     selectedDishes.forEach(dish => {
       dish.ingredients.forEach((ing: any) => {
-        const key = `${ing.name.trim().toLowerCase()}-${ing.unit?.trim().toLowerCase() || ''}`
+        // Improved key generation to handle cases better
+        // Remove emojis, extra spaces, and convert to lower case
+        const cleanName = ing.name.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim().toLowerCase()
+        const cleanUnit = ing.unit?.trim().toLowerCase() || ''
+        
+        const key = `${cleanName}-${cleanUnit}`
+        
         const existing = map.get(key)
-        const amount = parseFloat(ing.amount) || 0
+        // Ensure amount is number (handle float strings)
+        let amount = parseFloat(String(ing.amount).replace(',', '.')) || 0
         
         if (existing) {
           existing.amount += amount
@@ -83,7 +84,7 @@ export function Dashboard() {
           if (!ing.is_purchased) existing.is_purchased = false 
         } else {
           map.set(key, { 
-              name: ing.name, 
+              name: ing.name.trim(), // Keep original casing for display of first item
               amount, 
               unit: ing.unit, 
               ids: [ing.id],
@@ -93,7 +94,8 @@ export function Dashboard() {
       })
     })
     
-    return Array.from(map.values())
+    // Sort alphabetically
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [dishes])
 
   const handleToggleIngredient = async (item: any) => {
@@ -108,26 +110,43 @@ export function Dashboard() {
     refreshDishes()
   }
   
-  // Group dishes by day
   const dishesByDay = useMemo(() => {
       const groups: Record<number, any[]> = {}
       for(let i=0; i<7; i++) groups[i] = []
-      
       dishes.forEach(d => {
           if (d.day_of_week !== null && d.day_of_week !== undefined) {
               groups[d.day_of_week].push(d)
-          } else {
-              // Handle unscheduled dishes if any (maybe in a separate section or force day selection)
-              // For now, let's assume we only add to days. 
-              // If we have legacy dishes without day, maybe show them in "Ideas"?
           }
       })
+      // Sort each group by creation time? Or maybe index?
+      // Since drag and drop requires order, we ideally need a 'order' column. 
+      // But for now simple day-to-day moving is enough without intra-day reordering persistence (it will reset to DB order).
       return groups
   }, [dishes])
 
+  const onDragEnd = async (result: any) => {
+    if (!result.destination) return;
+
+    const sourceDay = parseInt(result.source.droppableId);
+    const destDay = parseInt(result.destination.droppableId);
+    const dishId = result.draggableId;
+
+    if (sourceDay === destDay) return; // No reordering support within same day yet (requires 'order' column)
+
+    // Optimistic Update
+    setDishes(prev => prev.map(d => {
+        if (d.id === dishId) {
+            return { ...d, day_of_week: destDay }
+        }
+        return d
+    }))
+
+    await moveDish(dishId, destDay);
+    refreshDishes();
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 relative">
-       {/* Header */}
        <div className="flex justify-between p-3 bg-white border-b items-center shadow-sm z-10">
          <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
             <Key className="h-4 w-4" />
@@ -138,7 +157,6 @@ export function Dashboard() {
          </Button>
        </div>
 
-       {/* Invite Modal */}
        {showInvite && (
            <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                <Card className="w-full max-w-sm">
@@ -149,85 +167,101 @@ export function Dashboard() {
                        <div className="p-3 bg-gray-100 rounded font-mono select-all text-xl font-bold mb-4">
                            {inviteCode || '...'}
                        </div>
-                       
                        <Button className="w-full flex items-center gap-2 mb-2" onClick={handleShare}>
                          <Share2 className="w-4 h-4" />
                          {t.shareLink}
                        </Button>
-
                        <Button variant="ghost" onClick={() => setShowInvite(false)}>{t.close}</Button>
                    </CardContent>
                </Card>
            </div>
        )}
 
-       {/* Content */}
        <div className="flex-1 overflow-auto p-4 pb-24 scroll-smooth">
           <h1 className="text-xl font-bold mb-4">
              {tab === 'plan' ? t.planMenu : t.shoppingList}
           </h1>
           
           {tab === 'plan' ? (
-            <div className="space-y-6">
-               {/* Day Blocks */}
-               {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => (
-                   <div key={dayIndex} className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                       <div className="bg-gray-100 p-3 font-semibold text-gray-700 flex justify-between items-center">
-                           <span>{t.days[dayIndex]}</span>
-                           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setAddingDay(dayIndex)}>
-                               <Plus className="h-4 w-4" />
-                           </Button>
-                       </div>
-                       
-                       <div className="p-2 space-y-2">
-                           {/* List dishes for this day */}
-                           {dishesByDay[dayIndex].map(dish => (
-                               <div key={dish.id} className="border rounded p-3 relative group">
-                                   <div className="flex justify-between items-start">
-                                       <div className="font-medium pr-6">{dish.name}</div>
-                                       <button 
-                                          onClick={() => handleDeleteDish(dish.id)}
-                                          className="text-gray-400 hover:text-red-500 absolute top-2 right-2"
-                                       >
-                                           <Trash2 className="h-4 w-4" />
-                                       </button>
+            <DragDropContext onDragEnd={onDragEnd}>
+                <div className="space-y-6">
+                   {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => (
+                       <Droppable key={dayIndex} droppableId={String(dayIndex)}>
+                           {(provided) => (
+                               <div 
+                                 ref={provided.innerRef}
+                                 {...provided.droppableProps}
+                                 className="bg-white rounded-lg shadow-sm border overflow-hidden"
+                               >
+                                   <div className="bg-gray-100 p-3 font-semibold text-gray-700 flex justify-between items-center">
+                                       <span>{t.days[dayIndex]}</span>
+                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setAddingDay(dayIndex)}>
+                                           <Plus className="h-4 w-4" />
+                                       </Button>
                                    </div>
-                                   <div className="mt-1">
-                                       {dish.ingredients && dish.ingredients.length > 0 ? (
-                                            <p className="text-xs text-gray-500">
-                                              {dish.ingredients.map((i: any) => i.name).join(', ')}
-                                            </p>
-                                        ) : (
-                                            <div className="flex items-center text-xs text-blue-500 animate-pulse">
-                                                <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                                {t.generating}
-                                            </div>
-                                        )}
+                                   
+                                   <div className="p-2 space-y-2 min-h-[50px]">
+                                       {dishesByDay[dayIndex].map((dish, index) => (
+                                           <Draggable key={dish.id} draggableId={dish.id} index={index}>
+                                               {(provided) => (
+                                                   <div
+                                                       ref={provided.innerRef}
+                                                       {...provided.draggableProps}
+                                                       {...provided.dragHandleProps}
+                                                       className="border rounded p-3 relative group bg-white"
+                                                       style={{ ...provided.draggableProps.style }}
+                                                   >
+                                                       <div className="flex justify-between items-start">
+                                                           <div className="font-medium pr-6">{dish.name}</div>
+                                                           <button 
+                                                              onClick={() => handleDeleteDish(dish.id)}
+                                                              className="text-gray-400 hover:text-red-500 absolute top-2 right-2"
+                                                              onPointerDown={(e) => e.stopPropagation()} // Prevent drag start
+                                                           >
+                                                               <Trash2 className="h-4 w-4" />
+                                                           </button>
+                                                       </div>
+                                                       <div className="mt-1">
+                                                           {dish.ingredients && dish.ingredients.length > 0 ? (
+                                                                <p className="text-xs text-gray-500">
+                                                                  {dish.ingredients.map((i: any) => i.name).join(', ')}
+                                                                </p>
+                                                            ) : (
+                                                                <div className="flex items-center text-xs text-blue-500 animate-pulse">
+                                                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                                    {t.generating}
+                                                                </div>
+                                                            )}
+                                                       </div>
+                                                   </div>
+                                               )}
+                                           </Draggable>
+                                       ))}
+                                       {provided.placeholder}
+                                       
+                                       {addingDay === dayIndex ? (
+                                           <AddDishForm 
+                                              day={dayIndex} 
+                                              onAdded={() => {
+                                                  setAddingDay(null)
+                                                  refreshDishes()
+                                              }} 
+                                              onCancel={() => setAddingDay(null)} 
+                                           />
+                                       ) : (
+                                           dishesByDay[dayIndex].length === 0 && (
+                                               <div className="text-xs text-gray-400 text-center py-2 cursor-pointer hover:text-gray-600" onClick={() => setAddingDay(dayIndex)}>
+                                                   + {t.add}
+                                               </div>
+                                           )
+                                       )}
                                    </div>
                                </div>
-                           ))}
-                           
-                           {/* Add Form for this day */}
-                           {addingDay === dayIndex ? (
-                               <AddDishForm 
-                                  day={dayIndex} 
-                                  onAdded={() => {
-                                      setAddingDay(null)
-                                      refreshDishes()
-                                  }} 
-                                  onCancel={() => setAddingDay(null)} 
-                               />
-                           ) : (
-                               dishesByDay[dayIndex].length === 0 && (
-                                   <div className="text-xs text-gray-400 text-center py-2 cursor-pointer hover:text-gray-600" onClick={() => setAddingDay(dayIndex)}>
-                                       + {t.add}
-                                   </div>
-                               )
                            )}
-                       </div>
-                   </div>
-               ))}
-            </div>
+                       </Droppable>
+                   ))}
+                </div>
+            </DragDropContext>
           ) : (
             <div className="space-y-2">
                {shoppingList.length === 0 ? (

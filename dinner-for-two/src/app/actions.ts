@@ -115,6 +115,23 @@ export async function toggleDishSelection(dishId: string, isSelected: boolean) {
   revalidatePath('/')
 }
 
+export async function moveDish(dishId: string, dayOfWeek: number) {
+  const user = await getUserFromSession()
+  if (!user || !user.couple_id) throw new Error('Unauthorized')
+  
+  const supabase = await createServerSideClient()
+  
+  const { error } = await supabase
+    .from('dishes')
+    .update({ day_of_week: dayOfWeek })
+    .eq('id', dishId)
+    .eq('couple_id', user.couple_id)
+
+  if (error) throw new Error(error.message)
+    
+  revalidatePath('/')
+}
+
 export async function toggleIngredientsPurchased(ingredientIds: string[], isPurchased: boolean) {
    const user = await getUserFromSession()
    if (!user || !user.couple_id) throw new Error('Unauthorized')
