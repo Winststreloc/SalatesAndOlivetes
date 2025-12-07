@@ -4,14 +4,26 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+
+console.log('🔧 Sentry initialization:', {
+  hasDsn: !!dsn,
+  dsnLength: dsn?.length || 0,
+  dsnPreview: dsn ? `${dsn.substring(0, 20)}...` : 'NOT SET',
+});
+
+if (!dsn) {
+  console.error('❌ NEXT_PUBLIC_SENTRY_DSN is not set! Sentry will not work.');
+}
+
 Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  dsn: dsn,
 
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 1,
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: false,
+  debug: true, // Enable debug mode to see what's happening
 
   replaysOnErrorSampleRate: 1.0,
 
@@ -84,19 +96,29 @@ if (typeof window !== 'undefined') {
   });
 
   // Test message to verify Sentry is working
-  console.log('🧪 Sending test message to Sentry...');
-  Sentry.captureMessage('hello', {
-    level: 'info',
-    tags: {
-      test: true,
-      source: 'app_startup',
-    },
-    extra: {
-      timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-    },
-  });
-  console.log('✅ Test message sent to Sentry');
+  if (dsn) {
+    console.log('🧪 Sending test message to Sentry...');
+    console.log('📊 Sentry client status:', Sentry.getClient() ? 'initialized' : 'not initialized');
+    
+    try {
+      const messageId = Sentry.captureMessage('hello', {
+        level: 'info',
+        tags: {
+          test: true,
+          source: 'app_startup',
+        },
+        extra: {
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+        },
+      });
+      console.log('✅ Test message sent to Sentry, message ID:', messageId);
+    } catch (error) {
+      console.error('❌ Failed to send test message to Sentry:', error);
+    }
+  } else {
+    console.warn('⚠️ Skipping test message - DSN not configured');
+  }
 }
 
 

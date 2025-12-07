@@ -121,26 +121,37 @@ export function Dashboard() {
     isMountedRef.current = true
     
     // Test message to verify Sentry is working
-    console.log('🧪 Dashboard mounted - sending test message to Sentry...');
-    Sentry.captureMessage('hello from Dashboard', {
-      level: 'info',
-      tags: {
-        test: true,
-        source: 'dashboard_mount',
-        component: 'Dashboard',
-      },
-      extra: {
-        timestamp: new Date().toISOString(),
-        coupleId: coupleId || 'not_set',
-      },
-    });
-    console.log('✅ Test message sent to Sentry from Dashboard');
+    const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+    if (dsn) {
+      console.log('🧪 Dashboard mounted - sending test message to Sentry...');
+      console.log('📊 Sentry client status:', Sentry.getClient() ? 'initialized' : 'not initialized');
+      
+      try {
+        const messageId = Sentry.captureMessage('hello from Dashboard', {
+          level: 'info',
+          tags: {
+            test: true,
+            source: 'dashboard_mount',
+            component: 'Dashboard',
+          },
+          extra: {
+            timestamp: new Date().toISOString(),
+            coupleId: coupleId || 'not_set',
+          },
+        });
+        console.log('✅ Test message sent to Sentry from Dashboard, message ID:', messageId);
+      } catch (error) {
+        console.error('❌ Failed to send test message to Sentry from Dashboard:', error);
+      }
+    } else {
+      console.warn('⚠️ Skipping test message - DSN not configured');
+    }
     
     return () => {
       // Mark as unmounted before cleanup
       isMountedRef.current = false
     }
-  }, [])
+  }, [coupleId])
 
   useEffect(() => {
     if (!coupleId) return // Wait for coupleId to be available
