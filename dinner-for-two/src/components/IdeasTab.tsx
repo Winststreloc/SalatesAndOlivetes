@@ -20,7 +20,7 @@ const CATEGORIES = {
 }
 
 export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => void }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [prefs, setPrefs] = useState<any>({ sides: [], proteins: [], veggies: [], treats: [], cuisines: [] })
   const [ideas, setIdeas] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -48,7 +48,8 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
 
   const handleGenerate = async () => {
       setLoading(true)
-      const newIdeas = await generateIdeas()
+      // Pass language here
+      const newIdeas = await generateIdeas(lang)
       setIdeas(newIdeas)
       setLoading(false)
   }

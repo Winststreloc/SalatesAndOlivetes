@@ -52,7 +52,7 @@ export function Dashboard() {
   
   const handleShare = () => {
     if (!inviteCode) return
-    const inviteText = `Join me in Dinner for Two! My code: ${inviteCode}`
+    const inviteText = `Join me in S&O! My code: ${inviteCode}`
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteText)}`
     
     if (window.Telegram?.WebApp) {
@@ -63,15 +63,12 @@ export function Dashboard() {
   }
 
   const handleAddIdea = async (name: string) => {
-      // Add idea to "unscheduled" or current day if any context? 
-      // Let's add to Monday (0) or ask user?
-      // For simplicity, let's just add to "Unscheduled" (null day) if possible, 
-      // but UI expects day. Let's add to today's day of week (0-6).
       const today = new Date().getDay()
-      const adjustedDay = today === 0 ? 6 : today - 1 // JS Sunday is 0, our Monday is 0.
+      const adjustedDay = today === 0 ? 6 : today - 1 
       
       const dish = await addDish(name, adjustedDay)
-      generateDishIngredients(dish.id, dish.name)
+      // Pass LANG here
+      generateDishIngredients(dish.id, dish.name, lang)
       refreshDishes()
       setTab('plan')
       alert(`Added "${name}" to ${t.days[adjustedDay]}`)
@@ -130,6 +127,20 @@ export function Dashboard() {
       return groups
   }, [dishes])
 
+  // Dynamic Days Ordering
+  const orderedDays = useMemo(() => {
+      const todayIndex = new Date().getDay(); // 0=Sun
+      // Convert to our 0=Mon system:
+      // Sun(0) -> 6, Mon(1) -> 0, ...
+      const today = todayIndex === 0 ? 6 : todayIndex - 1;
+
+      const days = [];
+      for(let i=0; i<7; i++) {
+          days.push((today + i) % 7);
+      }
+      return days;
+  }, [])
+
   const onDragEnd = async (result: any) => {
     if (!result.destination) return;
     const sourceDay = parseInt(result.source.droppableId);
@@ -153,7 +164,7 @@ export function Dashboard() {
          <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
             <Key className="h-4 w-4" />
          </Button>
-         <h1 className="font-semibold text-sm text-gray-700">Dinner for Two</h1>
+         <h1 className="font-semibold text-sm text-gray-700">S&O</h1>
          <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
             {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
          </Button>
@@ -191,7 +202,7 @@ export function Dashboard() {
           {tab === 'plan' && (
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="space-y-6">
-                   {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => (
+                   {orderedDays.map(dayIndex => (
                        <Droppable key={dayIndex} droppableId={String(dayIndex)}>
                            {(provided: any) => (
                                <div 

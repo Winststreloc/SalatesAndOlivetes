@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { useLang } from './LanguageProvider'
 
 export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: () => void, onCancel: () => void }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -22,8 +22,8 @@ export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: 
       setName('')
       onAdded() 
       
-      // 2. Async generate
-      generateDishIngredients(dish.id, dish.name).then(() => {
+      // 2. Async generate with LANGUAGE
+      generateDishIngredients(dish.id, dish.name, lang).then(() => {
           onAdded() 
       })
       

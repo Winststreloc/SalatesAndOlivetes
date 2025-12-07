@@ -30,7 +30,7 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
   return dish
 }
 
-export async function generateDishIngredients(dishId: string, dishName: string) {
+export async function generateDishIngredients(dishId: string, dishName: string, lang: 'en' | 'ru' = 'ru') {
   const user = await getUserFromSession()
   if (!user || !user.couple_id) throw new Error('Unauthorized')
   
@@ -43,8 +43,10 @@ export async function generateDishIngredients(dishId: string, dishName: string) 
     const prompt = `
       You are a chef. 
       Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}". 
+      Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
+      
       Each ingredient must have:
-      - 'name' (string, Russian or English based on dish name)
+      - 'name' (string, ${lang === 'ru' ? 'in Russian' : 'in English'})
       - 'amount' (number)
       - 'unit' (string, e.g. kg, g, pcs, ml)
       
@@ -205,7 +207,7 @@ export async function getPreferences() {
     return data?.preferences || {}
 }
 
-export async function generateIdeas() {
+export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {
     const user = await getUserFromSession()
     if (!user) throw new Error('Unauthorized')
     
@@ -223,7 +225,6 @@ export async function generateIdeas() {
     const treats = prefs.treats || []
     const cuisines = prefs.cuisines || []
     
-    // Check if at least some preference is set
     if ([...sides, ...proteins, ...veggies, ...treats, ...cuisines].length === 0) return []
     
     try {
@@ -237,11 +238,13 @@ export async function generateIdeas() {
           Cuisines: ${cuisines.join(', ') || 'Any'}
           Treats/Cheat meal desires: ${treats.join(', ')}
           
+          Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
+
           Guidelines:
           1. Mix comfort food and healthy options based on choices.
-          2. If 'Treats' are selected, include at least one option from there (e.g. homemade pizza or sushi bowl).
-          3. Use different cooking methods (oven, pan, stew).
-          4. Suggest COMPLETE dish names (e.g. "Grilled Chicken with Roasted Vegetables").
+          2. If 'Treats' are selected, include at least one option from there.
+          3. Use different cooking methods.
+          4. Suggest COMPLETE dish names ${lang === 'ru' ? '(e.g. "Курица гриль с овощами")' : '(e.g. "Grilled Chicken with Vegetables")'}.
           
           Return ONLY a JSON array of strings (dish names). Example: ["Fried Chicken with Rice", "Baked Fish with Potatoes"]
         `
