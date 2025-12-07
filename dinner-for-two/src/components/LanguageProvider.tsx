@@ -102,7 +102,9 @@ const translations = {
     loadWeek: "Load Week",
     weekOf: "Week of",
     noHistory: "No saved weeks yet",
-    savedWeeks: "Saved Weeks"
+    savedWeeks: "Saved Weeks",
+    deleteWeek: "Delete",
+    deleteWeekConfirm: "Are you sure you want to delete this week?"
   },
   ru: {
     startNew: "Создать пару",
@@ -153,6 +155,8 @@ const translations = {
     weekOf: "Неделя с",
     noHistory: "Нет сохраненных недель",
     savedWeeks: "Сохраненные недели",
+    deleteWeek: "Удалить",
+    deleteWeekConfirm: "Вы уверены, что хотите удалить эту неделю?",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",

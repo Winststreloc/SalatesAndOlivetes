@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan } from '@/app/actions'
+import { getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, deleteWeeklyPlan } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useLang } from './LanguageProvider'
-import { Calendar, Save, Loader2 } from 'lucide-react'
+import { Calendar, Save, Loader2, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[], onLoadWeek: (dishes: any[]) => void }) {
@@ -79,6 +79,18 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
     }
   }
 
+  const handleDeleteWeek = async (planId: string) => {
+    if (!confirm(t.deleteWeekConfirm)) return
+    
+    try {
+      await deleteWeeklyPlan(planId)
+      await loadPlans()
+    } catch (e: any) {
+      console.error('Failed to delete week:', e)
+      alert(e.message || 'Failed to delete week')
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -118,9 +130,19 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
                     {Array.isArray(plan.dishes) ? plan.dishes.length : 0} {plan.dishes?.length === 1 ? 'dish' : 'dishes'}
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleLoadWeek(plan)}>
-                  {t.loadWeek}
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleLoadWeek(plan)}>
+                    {t.loadWeek}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleDeleteWeek(plan.id)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}

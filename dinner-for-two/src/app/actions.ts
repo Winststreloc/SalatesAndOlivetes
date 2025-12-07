@@ -484,6 +484,25 @@ export async function loadWeeklyPlan(planId: string) {
     return data
 }
 
+export async function deleteWeeklyPlan(planId: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const { error } = await supabase
+        .from('weekly_plans')
+        .delete()
+        .eq('id', planId)
+        .eq('couple_id', user.couple_id)
+    
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+    return { success: true }
+}
+
 // Logout is now handled via API route /api/auth/logout
 // This function is kept for backward compatibility but redirects to home
 export async function logout() {

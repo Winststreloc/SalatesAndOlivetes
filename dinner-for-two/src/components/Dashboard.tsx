@@ -751,23 +751,24 @@ export function Dashboard() {
           )}
        </div>
        
-       <div className="fixed bottom-0 left-0 right-0 border-t border-border p-2 flex justify-around bg-card shadow-up z-20">
-          <Button variant={tab === 'plan' ? 'default' : 'ghost'} onClick={() => setTab('plan')} className="flex-1 mx-1">
-            <Calendar className="w-4 h-4 mr-2" />
-            <span className="text-xs">{t.planMenu}</span>
-          </Button>
-          <Button variant={tab === 'ideas' ? 'default' : 'ghost'} onClick={() => setTab('ideas')} className="flex-1 mx-1">
-            <Lightbulb className="w-4 h-4 mr-2" />
-            <span className="text-xs">{t.ideas}</span>
-          </Button>
-          <Button variant={tab === 'list' ? 'default' : 'ghost'} onClick={() => setTab('list')} className="flex-1 mx-1">
-            {/* Shopping cart icon? */}
-            <span className="text-xs">{t.shoppingList}</span>
-          </Button>
-          <Button variant={tab === 'history' ? 'default' : 'ghost'} onClick={() => setTab('history')} className="flex-1 mx-1">
-            <History className="w-4 h-4 mr-2" />
-            <span className="text-xs">{t.history}</span>
-          </Button>
+       <div className="fixed bottom-0 left-0 right-0 border-t border-border p-2 bg-card shadow-up z-20">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <Button variant={tab === 'plan' ? 'default' : 'ghost'} onClick={() => setTab('plan')} className="flex-shrink-0 whitespace-nowrap">
+              <Calendar className="w-4 h-4 mr-2" />
+              <span className="text-xs">{t.planMenu}</span>
+            </Button>
+            <Button variant={tab === 'ideas' ? 'default' : 'ghost'} onClick={() => setTab('ideas')} className="flex-shrink-0 whitespace-nowrap">
+              <Lightbulb className="w-4 h-4 mr-2" />
+              <span className="text-xs">{t.ideas}</span>
+            </Button>
+            <Button variant={tab === 'list' ? 'default' : 'ghost'} onClick={() => setTab('list')} className="flex-shrink-0 whitespace-nowrap">
+              <span className="text-xs">{t.shoppingList}</span>
+            </Button>
+            <Button variant={tab === 'history' ? 'default' : 'ghost'} onClick={() => setTab('history')} className="flex-shrink-0 whitespace-nowrap">
+              <History className="w-4 h-4 mr-2" />
+              <span className="text-xs">{t.history}</span>
+            </Button>
+          </div>
        </div>
     </div>
   )
