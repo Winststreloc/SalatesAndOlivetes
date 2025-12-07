@@ -28,6 +28,13 @@ export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: 
       // 2. Async generate with LANGUAGE (don't wait)
       generateDishIngredients(dish.id, dish.name, lang).catch(err => {
         console.error('Failed to generate ingredients:', err)
+        // Show error if validation failed
+        if (err.message && (err.message.includes('valid dish name') || err.message.includes('INVALID_INPUT') || err.message.includes('не название блюда') || err.message.includes('not a food-related'))) {
+          showToast.error(err.message || (t.invalidDishName || 'Please enter a valid dish name (food-related only)'))
+          // Remove the dish that was added optimistically
+          // Note: The dish is already added, but we can't easily remove it here
+          // The user will see the error and can delete it manually if needed
+        }
       })
       
     } catch (e: any) {

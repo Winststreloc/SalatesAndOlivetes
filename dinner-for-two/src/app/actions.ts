@@ -6,7 +6,6 @@ import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { isValidDishName } from '@/utils/validateDishName'
 
 // Initialize Google Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
@@ -20,13 +19,6 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
   if (!user.couple_id) {
     console.error('addDish: User has no couple_id', user.telegram_id)
     throw new Error('Unauthorized: Please create or join a couple first')
-  }
-
-  // Validate dish name
-  const validation = isValidDishName(dishName)
-  if (!validation.valid) {
-    console.error('addDish: Invalid dish name', dishName, validation.reason)
-    throw new Error('Please enter a valid dish name (food-related only)')
   }
 
   const supabase = await createServerSideClient()
@@ -60,13 +52,6 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     return { success: false }
   }
   
-  // Validate dish name before making AI request
-  const validation = isValidDishName(dishName)
-  if (!validation.valid) {
-    console.error('generateDishIngredients: Invalid dish name', dishName, validation.reason)
-    return { success: false, error: 'Invalid dish name' }
-  }
-  
   const supabase = await createServerSideClient()
   
   // Check cache first
@@ -98,19 +83,20 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-robotics-er-1.5-preview' })
       
-      const prompt = `You are a chef. 
-Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish and a key 'recipe' containing cooking instructions.
+      const prompt = `You are a chef assistant. Your task is to validate if the input is a food-related dish name and generate ingredients/recipe.
+
+IMPORTANT VALIDATION RULES:
+1. If the input is NOT related to food/cooking (e.g., programming questions, general questions, commands, spam, non-food items), return: {"error": "INVALID_INPUT", "message": "${lang === 'ru' ? 'Это не название блюда, связанное с едой. Пожалуйста, введите валидное название блюда.' : 'This is not a food-related dish name. Please enter a valid dish name.'}"}
+2. If the input IS a valid dish name, proceed with generating ingredients and recipe.
+
+If valid, generate a JSON object with:
+- 'ingredients': array of ingredients, each with 'name' (string), 'amount' (number or string), 'unit' (string, e.g. kg, g, pcs, ml)
+- 'recipe': string with cooking instructions (markdown allowed)
+
 Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
-
-Each ingredient must have:
-- 'name' (string, ${lang === 'ru' ? 'in Russian' : 'in English'})
-- 'amount' (number or string)
-- 'unit' (string, e.g. kg, g, pcs, ml)
-
-The 'recipe' should be a string with steps formatted nicely (markdown allowed).
 Return ONLY valid JSON, no other text.
 
-Dish: ${dishName}`
+Input: ${dishName}`
 
       const result = await model.generateContent(prompt)
       const response = await result.response
@@ -125,6 +111,12 @@ Dish: ${dishName}`
       }
       
       const parsed = JSON.parse(jsonContent || '{}')
+      
+      // Check if AI returned an error (invalid input)
+      if (parsed.error === 'INVALID_INPUT') {
+        console.error('AI validation failed:', parsed.message)
+        throw new Error(parsed.message || (lang === 'ru' ? 'Пожалуйста, введите валидное название блюда (только связанное с едой)' : 'Please enter a valid dish name (food-related only)'))
+      }
       
       if (Array.isArray(parsed.ingredients)) {
           ingredients = parsed.ingredients
@@ -148,9 +140,13 @@ Dish: ${dishName}`
             onConflict: 'dish_name_lower,lang'
           })
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('AI Generation failed', e)
-      // Don't fail the whole action, just skip AI part
+      // If it's a validation error, re-throw it to show to user
+      if (e.message && (e.message.includes('valid dish name') || e.message.includes('INVALID_INPUT') || e.message.includes('не название блюда') || e.message.includes('not a food-related'))) {
+        throw e
+      }
+      // For other errors, don't fail the whole action, just skip AI part
     }
   }
 

@@ -463,6 +463,12 @@ export function Dashboard() {
               if (isMountedRef.current) {
                 refreshDishes()
               }
+          }).catch(err => {
+            console.error('Failed to generate ingredients:', err)
+            // Show error if validation failed
+            if (err.message && (err.message.includes('valid dish name') || err.message.includes('INVALID_INPUT') || err.message.includes('не название блюда') || err.message.includes('not a food-related'))) {
+              showToast.error(err.message || (t.invalidDishName || 'Please enter a valid dish name (food-related only)'))
+            }
           })
           
           if (isMountedRef.current) {
