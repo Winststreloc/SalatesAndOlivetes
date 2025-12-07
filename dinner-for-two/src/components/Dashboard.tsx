@@ -120,6 +120,22 @@ export function Dashboard() {
   useEffect(() => {
     isMountedRef.current = true
     
+    // Test message to verify Sentry is working
+    console.log('🧪 Dashboard mounted - sending test message to Sentry...');
+    Sentry.captureMessage('hello from Dashboard', {
+      level: 'info',
+      tags: {
+        test: true,
+        source: 'dashboard_mount',
+        component: 'Dashboard',
+      },
+      extra: {
+        timestamp: new Date().toISOString(),
+        coupleId: coupleId || 'not_set',
+      },
+    });
+    console.log('✅ Test message sent to Sentry from Dashboard');
+    
     return () => {
       // Mark as unmounted before cleanup
       isMountedRef.current = false

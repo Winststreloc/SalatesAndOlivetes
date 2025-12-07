@@ -82,6 +82,21 @@ if (typeof window !== 'undefined') {
       tags: { error_type: 'unhandled_promise_rejection' },
     });
   });
+
+  // Test message to verify Sentry is working
+  console.log('🧪 Sending test message to Sentry...');
+  Sentry.captureMessage('hello', {
+    level: 'info',
+    tags: {
+      test: true,
+      source: 'app_startup',
+    },
+    extra: {
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+    },
+  });
+  console.log('✅ Test message sent to Sentry');
 }
 
 
