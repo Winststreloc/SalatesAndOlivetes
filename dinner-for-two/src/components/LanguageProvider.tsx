@@ -32,7 +32,24 @@ const translations = {
     copied: "Copied!",
     generating: "Generating recipe...",
     days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-    addForDay: "Add for"
+    addForDay: "Add for",
+    ideas: "Ideas",
+    settings: "Settings",
+    sides: "Preferred Sides",
+    proteins: "Preferred Proteins",
+    save: "Save",
+    generateIdeas: "Generate Ideas based on preferences",
+    noIdeas: "No ideas generated yet. Setup preferences and click Generate!",
+    useIdea: "Use",
+    buckwheat: "Buckwheat",
+    pasta: "Pasta",
+    rice: "Rice",
+    potato: "Potatoes",
+    chicken: "Chicken",
+    beef: "Beef",
+    pork: "Pork",
+    fish: "Fish",
+    select: "Select"
   },
   ru: {
     startNew: "Создать пару",
@@ -61,7 +78,24 @@ const translations = {
     copied: "Скопировано!",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
-    addForDay: "Добавить на"
+    addForDay: "Добавить на",
+    ideas: "Идеи",
+    settings: "Настройки",
+    sides: "Любимые гарниры",
+    proteins: "Любимое мясо/рыба",
+    save: "Сохранить",
+    generateIdeas: "Сгенерировать идеи по вкусу",
+    noIdeas: "Нет идей. Настройте предпочтения и нажмите Сгенерировать!",
+    useIdea: "Взять",
+    buckwheat: "Гречка",
+    pasta: "Макароны",
+    rice: "Рис",
+    potato: "Картошка",
+    chicken: "Курица",
+    beef: "Говядина",
+    pork: "Свинина",
+    fish: "Рыба",
+    select: "Выбрать"
   }
 }
 

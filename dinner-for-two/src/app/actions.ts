@@ -13,13 +13,19 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
 
   const supabase = await createServerSideClient()
 
+  // Status logic: 
+  // If added to a specific day -> 'proposed' (needs approval) or 'selected'? 
+  // User asked for approval flow. So let's make it 'proposed' by default unless we want auto-approve for own dishes?
+  // Usually in couples apps: one proposes, other accepts. Or just "it's in the plan".
+  // Let's set to 'proposed' so the checkmark UI appears.
+  
   const { data: dish, error } = await supabase
     .from('dishes')
     .insert({
       couple_id: user.couple_id,
       name: dishName,
-      status: 'selected', // If added to a day, it is implicitly selected
-      day_of_week: dayOfWeek // 0-6
+      status: 'proposed',
+      day_of_week: dayOfWeek 
     })
     .select()
     .single()
@@ -173,4 +179,71 @@ export async function getInviteCode() {
         .single()
         
     return data?.invite_code
+}
+
+// User Preferences Actions
+
+export async function updatePreferences(prefs: any) {
+    const user = await getUserFromSession()
+    if (!user) throw new Error('Unauthorized')
+    
+    const supabase = await createServerSideClient()
+    const { error } = await supabase
+        .from('users')
+        .update({ preferences: prefs })
+        .eq('telegram_id', user.telegram_id)
+        
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+}
+
+export async function getPreferences() {
+    const user = await getUserFromSession()
+    if (!user) return {}
+    
+    const supabase = await createServerSideClient()
+    const { data } = await supabase
+        .from('users')
+        .select('preferences')
+        .eq('telegram_id', user.telegram_id)
+        .single()
+        
+    return data?.preferences || {}
+}
+
+export async function generateIdeas() {
+    const user = await getUserFromSession()
+    if (!user) throw new Error('Unauthorized')
+    
+    const supabase = await createServerSideClient()
+    const { data } = await supabase
+        .from('users')
+        .select('preferences')
+        .eq('telegram_id', user.telegram_id)
+        .single()
+        
+    const prefs = data?.preferences || {}
+    const sides = prefs.sides || []
+    const proteins = prefs.proteins || []
+    
+    if (sides.length === 0 && proteins.length === 0) return []
+    
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const prompt = `
+          Generate 3 dinner ideas based on these preferences:
+          Sides: ${sides.join(', ')}
+          Proteins: ${proteins.join(', ')}
+          
+          Vary the cooking methods (fried, boiled, baked).
+          Return ONLY a JSON array of strings (dish names). Example: ["Fried Chicken with Rice", "Baked Fish with Potatoes"]
+        `
+        const result = await model.generateContent(prompt);
+        const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+        const ideas = JSON.parse(text);
+        return Array.isArray(ideas) ? ideas : []
+    } catch (e) {
+        console.error(e)
+        return []
+    }
 }
