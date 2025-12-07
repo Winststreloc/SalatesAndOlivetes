@@ -98,6 +98,7 @@ export function Dashboard() {
     isMountedRef.current = true
     
     return () => {
+      // Mark as unmounted before cleanup
       isMountedRef.current = false
     }
   }, [])
@@ -105,10 +106,12 @@ export function Dashboard() {
   useEffect(() => {
     if (!coupleId) return // Wait for coupleId to be available
     
-    refreshDishes()
-    loadInviteCode()
-    loadManualIngredients()
-    checkHasPartner()
+    if (isMountedRef.current) {
+      refreshDishes()
+      loadInviteCode()
+      loadManualIngredients()
+      checkHasPartner()
+    }
     
     // Supabase Realtime subscription with filtering
     const supabase = createClient()
@@ -155,8 +158,16 @@ export function Dashboard() {
                     setTimeout(() => safeUpdate(() => refreshDishes()), 100)
                 } else if (payload.eventType === 'DELETE') {
                     // Dish deleted - remove from local state
+                    // Only remove if it still exists (avoid duplicate removal)
                     safeUpdate(() => {
-                      setDishes(prev => prev.filter(d => d.id !== payload.old.id))
+                      setDishes(prev => {
+                        const exists = prev.some(d => d.id === payload.old.id)
+                        if (!exists) {
+                          // Already removed, skip
+                          return prev
+                        }
+                        return prev.filter(d => d.id !== payload.old.id)
+                      })
                     })
                 } else {
                     safeUpdate(() => refreshDishes())
@@ -221,8 +232,16 @@ export function Dashboard() {
   }, [coupleId])
 
   const handleToggleDish = async (id: string, currentStatus: string) => {
-    setDishes(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus === 'selected' ? 'proposed' : 'selected' } : d))
-    await toggleDishSelection(id, currentStatus !== 'selected')
+    if (!isMountedRef.current) return
+    try {
+      setDishes(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus === 'selected' ? 'proposed' : 'selected' } : d))
+      await toggleDishSelection(id, currentStatus !== 'selected')
+    } catch (e: any) {
+      console.error('Failed to toggle dish:', e)
+      if (isMountedRef.current) {
+        refreshDishes()
+      }
+    }
   }
   
   const handleDeleteDish = async (id: string) => {
@@ -307,23 +326,33 @@ export function Dashboard() {
           const dish = await addDish(name, day)
           
           // Optimistic update - add dish to local state immediately
-          setDishes(prev => [...prev, {
-              ...dish,
-              ingredients: [],
-              status: 'proposed'
-          }])
+          if (isMountedRef.current) {
+            setDishes(prev => [...prev, {
+                ...dish,
+                ingredients: [],
+                status: 'proposed'
+            }])
+          }
           
           // Refresh to get full data (with ingredients when they're generated)
-          setTimeout(() => refreshDishes(), 500)
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              refreshDishes()
+            }
+          }, 500)
           
           // Pass LANG here - generate ingredients asynchronously
           generateDishIngredients(dish.id, dish.name, lang).then(() => {
               // Refresh again after ingredients are generated
-              refreshDishes()
+              if (isMountedRef.current) {
+                refreshDishes()
+              }
           })
           
-          setTab('plan')
-          showToast.success(t.addSuccess || 'Dish added successfully')
+          if (isMountedRef.current) {
+            setTab('plan')
+            showToast.success(t.addSuccess || 'Dish added successfully')
+          }
       } catch (e: any) {
           console.error('Failed to add dish:', e)
           showToast.error(t.failedAdd || 'Failed to add dish')
@@ -526,20 +555,24 @@ export function Dashboard() {
       if (item.ids && item.ids.length > 0) {
         idsToUpdate.push(...item.ids)
         // Update dish ingredients in local state
-        setDishes(prev => prev.map(d => ({
-            ...d,
-            ingredients: d.ingredients.map((ing: any) => 
-                item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
-            )
-        })))
+        if (isMountedRef.current) {
+          setDishes(prev => prev.map(d => ({
+              ...d,
+              ingredients: d.ingredients.map((ing: any) => 
+                  item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
+              )
+          })))
+        }
       }
       
       // Update manual ingredients
       if (item.manualId) {
         idsToUpdate.push(item.manualId)
-        setManualIngredients(prev => prev.map(ing => 
-          ing.id === item.manualId ? { ...ing, is_purchased: newStatus } : ing
-        ))
+        if (isMountedRef.current) {
+          setManualIngredients(prev => prev.map(ing => 
+            ing.id === item.manualId ? { ...ing, is_purchased: newStatus } : ing
+          ))
+        }
       }
       
       if (idsToUpdate.length > 0) {
@@ -547,9 +580,11 @@ export function Dashboard() {
       }
     } catch (e: any) {
       console.error('Failed to toggle ingredient:', e)
-      refreshDishes()
-      loadManualIngredients()
-      showToast.error(e.message || 'Failed to update ingredient')
+      if (isMountedRef.current) {
+        refreshDishes()
+        loadManualIngredients()
+        showToast.error(e.message || 'Failed to update ingredient')
+      }
     }
   }
 
@@ -560,62 +595,86 @@ export function Dashboard() {
       description: t.deleteIngredientConfirm || 'Are you sure you want to delete this ingredient?',
       onConfirm: async () => {
         setConfirmDialog(null)
+        if (!isMountedRef.current) return
+        
         try {
           // Delete from dish ingredients
           if (item.ids.length > 0) {
             for (const id of item.ids) {
               await deleteIngredient(id)
             }
-            await refreshDishes()
+            if (isMountedRef.current) {
+              await refreshDishes()
+            }
           }
           
           // Delete manual ingredient
           if (item.manualId) {
             await deleteManualIngredient(item.manualId)
-            await loadManualIngredients()
+            if (isMountedRef.current) {
+              await loadManualIngredients()
+            }
           }
-          showToast.success(t.deleteIngredientSuccess || 'Ingredient deleted successfully')
+          if (isMountedRef.current) {
+            showToast.success(t.deleteIngredientSuccess || 'Ingredient deleted successfully')
+          }
         } catch (e: any) {
           console.error('Failed to delete ingredient:', e)
-          showToast.error(e.message || 'Failed to delete ingredient')
+          if (isMountedRef.current) {
+            showToast.error(e.message || 'Failed to delete ingredient')
+          }
         }
       }
     })
   }
 
   const handleAddManualIngredient = async (name: string, amount: string, unit: string) => {
+    if (!isMountedRef.current) return
     try {
       await addManualIngredient(name, amount, unit)
-      await loadManualIngredients()
-      setShowAddIngredient(false)
-      showToast.success(t.addIngredientSuccess || 'Ingredient added successfully')
+      if (isMountedRef.current) {
+        await loadManualIngredients()
+        setShowAddIngredient(false)
+        showToast.success(t.addIngredientSuccess || 'Ingredient added successfully')
+      }
     } catch (e: any) {
       console.error('Failed to add ingredient:', e)
-      showToast.error(e.message || 'Failed to add ingredient')
+      if (isMountedRef.current) {
+        showToast.error(e.message || 'Failed to add ingredient')
+      }
     }
   }
 
   const handleUpdateIngredient = async (item: any, name: string, amount: string, unit: string) => {
+    if (!isMountedRef.current) return
     try {
       // Update dish ingredients
       if (item.ids.length > 0) {
         for (const id of item.ids) {
           await updateIngredient(id, name, amount, unit)
         }
-        await refreshDishes()
+        if (isMountedRef.current) {
+          await refreshDishes()
+        }
       }
       
       // Update manual ingredient
       if (item.manualId) {
         await updateManualIngredient(item.manualId, name, amount, unit)
-        await loadManualIngredients()
+        if (isMountedRef.current) {
+          await loadManualIngredients()
+        }
       }
       
-      setEditingIngredient(null)
-      showToast.success(t.updateIngredientSuccess || 'Ingredient updated successfully')
+      if (isMountedRef.current) {
+        setEditingIngredient(null)
+        showToast.success(t.updateIngredientSuccess || 'Ingredient updated successfully')
+      }
     } catch (e: any) {
       console.error('Failed to update ingredient:', e)
-      showToast.error(e.message || 'Failed to update ingredient')
+      if (isMountedRef.current) {
+        showToast.error(e.message || 'Failed to update ingredient')
+      }
     }
   }
   
@@ -801,8 +860,10 @@ export function Dashboard() {
                 onLoadWeek={async (loadedDishes) => {
                   // Replace current dishes with loaded ones
                   // Need to recreate dishes in DB or just show them
-                  setDishes(loadedDishes)
-                  setTab('plan')
+                  if (isMountedRef.current) {
+                    setDishes(loadedDishes)
+                    setTab('plan')
+                  }
                 }} 
               />
           )}
@@ -940,10 +1001,11 @@ export function Dashboard() {
                                            <AddDishForm 
                                               day={dayIndex} 
                                               onAdded={async (dish) => {
+                                                  if (!isMountedRef.current) return
                                                   setAddingDay(null)
                                                   
                                                   // Optimistic update - add dish immediately to local state
-                                                  if (dish) {
+                                                  if (dish && isMountedRef.current) {
                                                       setDishes(prev => [...prev, {
                                                           ...dish,
                                                           ingredients: [],
@@ -952,8 +1014,14 @@ export function Dashboard() {
                                                   }
                                                   
                                                   // Refresh to get full data (with ingredients when generated)
-                                                  await refreshDishes()
-                                                  setTimeout(() => refreshDishes(), 1000)
+                                                  if (isMountedRef.current) {
+                                                    await refreshDishes()
+                                                    setTimeout(() => {
+                                                      if (isMountedRef.current) {
+                                                        refreshDishes()
+                                                      }
+                                                    }, 1000)
+                                                  }
                                               }} 
                                               onCancel={() => setAddingDay(null)} 
                                            />
