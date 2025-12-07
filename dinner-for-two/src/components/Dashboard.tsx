@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, logout } from '@/app/actions'
+import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
@@ -17,7 +17,7 @@ import { createClient } from '@/lib/supabase'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
-  const { coupleId } = useAuth()
+  const { coupleId, logout } = useAuth()
   const [tab, setTab] = useState<'plan' | 'list' | 'ideas'>('plan')
   const [dishes, setDishes] = useState<any[]>([])
   const [showInvite, setShowInvite] = useState(false)
@@ -262,7 +262,9 @@ export function Dashboard() {
              <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
                 {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
              </Button>
-             <Button variant="ghost" size="icon" onClick={() => logout()}>
+             <Button variant="ghost" size="icon" onClick={async () => {
+                await logout()
+             }}>
                 <LogOut className="h-4 w-4 text-red-400" />
              </Button>
          </div>

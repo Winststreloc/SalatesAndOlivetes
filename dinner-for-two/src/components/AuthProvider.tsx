@@ -30,6 +30,7 @@ interface AuthContextType {
   isLoading: boolean
   createCouple: () => Promise<any>
   joinCouple: (code: string) => Promise<void>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType)
@@ -96,8 +97,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
      }
   }
 
+  const logout = async () => {
+    try {
+      // Call API to delete session cookie
+      await fetch('/api/auth/logout', { method: 'POST' })
+      
+      // Clear coupleId to show PairingScreen
+      setCoupleId(null)
+      
+      // Re-authenticate if still in Telegram to get fresh session without couple_id
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp?.initData) {
+        const initData = window.Telegram.WebApp.initData
+        try {
+          const res = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData })
+          })
+          
+          if (res.ok) {
+            const data = await res.json()
+            setUser(data.user)
+            setCoupleId(data.couple_id || null) // Should be null after logout
+          }
+        } catch (e) {
+          console.error('Re-auth after logout failed', e)
+          // Clear user if re-auth fails
+          setUser(null)
+        }
+      } else {
+        // Not in Telegram, clear user
+        setUser(null)
+      }
+    } catch (e) {
+      console.error('Logout failed', e)
+      // Even if API call fails, clear coupleId
+      setCoupleId(null)
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, coupleId, isLoading, createCouple, joinCouple }}>
+    <AuthContext.Provider value={{ user, coupleId, isLoading, createCouple, joinCouple, logout }}>
       {children}
     </AuthContext.Provider>
   )

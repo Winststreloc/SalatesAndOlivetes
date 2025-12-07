@@ -337,6 +337,8 @@ Return ONLY valid JSON, no other text.`
     }
 }
 
+// Logout is now handled via API route /api/auth/logout
+// This function is kept for backward compatibility but redirects to home
 export async function logout() {
     const cookieStore = await cookies()
     cookieStore.delete('session')
