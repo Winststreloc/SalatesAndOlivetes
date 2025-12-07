@@ -3,9 +3,11 @@ import { useAuth } from '@/components/AuthProvider'
 import { PairingScreen } from '@/components/PairingScreen'
 import { Dashboard } from '@/components/Dashboard'
 import { Card } from '@/components/ui/card'
+import { useLang } from '@/components/LanguageProvider'
 
 export default function Home() {
   const { user, coupleId, isLoading } = useAuth()
+  const { t } = useLang()
 
   if (isLoading) {
     return (
@@ -20,7 +22,7 @@ export default function Home() {
     return (
        <div className="flex items-center justify-center h-screen p-4 text-center">
          <Card className="p-6">
-           Please open this app in Telegram
+           {t.openInTg}
          </Card>
        </div>
     )

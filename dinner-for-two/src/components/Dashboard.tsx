@@ -7,8 +7,10 @@ import { AddDishForm } from './AddDishForm'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useLang } from './LanguageProvider'
 
 export function Dashboard() {
+  const { t, lang, setLang } = useLang()
   const [tab, setTab] = useState<'add' | 'list'>('add')
   const [dishes, setDishes] = useState<any[]>([])
   
@@ -75,9 +77,14 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
+       <div className="flex justify-end p-2 bg-white border-b">
+         <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
+            {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
+         </Button>
+       </div>
        <div className="flex-1 overflow-auto p-4 pb-24">
           <h1 className="text-xl font-bold mb-4">
-             {tab === 'add' ? 'Plan Menu' : 'Shopping List'}
+             {tab === 'add' ? t.planMenu : t.shoppingList}
           </h1>
           
           {tab === 'add' ? (
@@ -106,14 +113,14 @@ export function Dashboard() {
                    </Card>
                  ))}
                  {dishes.length === 0 && (
-                   <div className="text-center text-gray-500 mt-8">No dishes yet. Add one!</div>
+                   <div className="text-center text-gray-500 mt-8">{t.noDishes}</div>
                  )}
               </div>
             </>
           ) : (
             <div className="space-y-2">
                {shoppingList.length === 0 ? (
-                 <p className="text-gray-500 text-center mt-10">Select dishes in the Plan tab to generate a list.</p>
+                 <p className="text-gray-500 text-center mt-10">{t.selectDishesHint}</p>
                ) : (
                  shoppingList.map((item, idx) => (
                    <div key={idx} className="flex items-center space-x-3 p-3 bg-white rounded shadow-sm">
@@ -137,10 +144,10 @@ export function Dashboard() {
        
        <div className="fixed bottom-0 left-0 right-0 border-t p-2 flex justify-around bg-white shadow-up">
           <Button variant={tab === 'add' ? 'default' : 'ghost'} onClick={() => setTab('add')} className="flex-1 mx-1">
-            Plan Menu
+            {t.planMenu}
           </Button>
           <Button variant={tab === 'list' ? 'default' : 'ghost'} onClick={() => setTab('list')} className="flex-1 mx-1">
-            Shopping List
+            {t.shoppingList}
           </Button>
        </div>
     </div>

@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { addDish } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useLang } from './LanguageProvider'
 
 export function AddDishForm({ onAdded }: { onAdded: () => void }) {
+  const { t } = useLang()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -19,7 +21,7 @@ export function AddDishForm({ onAdded }: { onAdded: () => void }) {
       setName('')
       onAdded()
     } catch (e) {
-      alert('Failed to add dish')
+      alert(t.failedAdd)
     } finally {
       setLoading(false)
     }
@@ -28,16 +30,14 @@ export function AddDishForm({ onAdded }: { onAdded: () => void }) {
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 mb-4">
       <Input 
-        placeholder="Dish name (e.g. Pasta)" 
+        placeholder={t.addDishPlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
         disabled={loading}
       />
       <Button type="submit" disabled={loading}>
-        {loading ? '...' : 'Add'}
+        {loading ? t.loading : t.add}
       </Button>
     </form>
   )
 }
-
-

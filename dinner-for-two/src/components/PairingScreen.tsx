@@ -1,12 +1,14 @@
 'use client'
 import { useState } from 'react'
 import { useAuth } from './AuthProvider'
+import { useLang } from './LanguageProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function PairingScreen() {
   const { createCouple, joinCouple } = useAuth()
+  const { t, lang, setLang } = useLang()
   const [inviteCode, setInviteCode] = useState('')
   const [createdCode, setCreatedCode] = useState<string | null>(null)
 
@@ -21,38 +23,43 @@ export function PairingScreen() {
     try {
         await joinCouple(inviteCode)
     } catch (e) {
-        alert('Invalid code')
+        alert(t.invalidCode)
     }
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 items-center justify-center h-screen bg-gray-50">
+    <div className="flex flex-col gap-4 p-4 items-center justify-center h-screen bg-gray-50 relative">
+      <div className="absolute top-4 right-4">
+         <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
+            {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
+         </Button>
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
-           <CardTitle>Welcome to Dinner for Two</CardTitle>
+           <CardTitle>{t.welcome}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
            {!createdCode ? (
              <>
-               <Button onClick={handleCreate} className="w-full">Start a new Couple</Button>
-               <div className="text-center text-sm text-gray-500">- OR -</div>
+               <Button onClick={handleCreate} className="w-full">{t.startNew}</Button>
+               <div className="text-center text-sm text-gray-500">{t.or}</div>
                <div className="flex gap-2">
                  <Input 
-                   placeholder="Enter Invite Code" 
+                   placeholder={t.enterCode}
                    value={inviteCode} 
                    onChange={(e) => setInviteCode(e.target.value)} 
                  />
-                 <Button variant="outline" onClick={handleJoin}>Join</Button>
+                 <Button variant="outline" onClick={handleJoin}>{t.join}</Button>
                </div>
              </>
            ) : (
              <div className="text-center">
-               <p className="mb-2">Share this code with your partner:</p>
+               <p className="mb-2">{t.shareCode}</p>
                <div className="p-4 bg-gray-100 rounded font-mono select-all text-lg font-bold">
                  {createdCode}
                </div>
-               <p className="text-xs text-gray-500 mt-4">Waiting for partner...</p>
-               <Button className="mt-4" variant="ghost" onClick={() => window.location.reload()}>Refresh</Button>
+               <p className="text-xs text-gray-500 mt-4">{t.waiting}</p>
+               <Button className="mt-4" variant="ghost" onClick={() => window.location.reload()}>{t.refresh}</Button>
              </div>
            )}
         </CardContent>
@@ -60,5 +67,3 @@ export function PairingScreen() {
     </div>
   )
 }
-
-
