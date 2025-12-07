@@ -78,7 +78,9 @@ const translations = {
     select: "Select",
     approve: "Approve",
     unapprove: "Unapprove",
-    selectDay: "Select Day"
+    selectDay: "Select Day",
+    copyLink: "Copy Link",
+    logoutConfirm: "Are you sure you want to leave the couple? You will need to create or join a new couple."
   },
   ru: {
     startNew: "Создать пару",
