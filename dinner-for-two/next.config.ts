@@ -27,8 +27,13 @@ export default withSentryConfig(nextConfig, {
   // side errors will fail.
   tunnelRoute: "/monitoring",
 
-  // Hides source maps from generated client bundles
-  hideSourceMaps: true,
+  // Source maps configuration
+  sourcemaps: {
+    // Disable source maps in production bundles (they're uploaded to Sentry separately)
+    disable: false,
+    // Assets to include in source maps
+    assets: [".next/**/*"],
+  },
 
   // Automatically tree-shake Sentry logger statements to reduce bundle size
   disableLogger: true,
