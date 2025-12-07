@@ -9,20 +9,21 @@ export async function POST(request: Request) {
     const { initData } = body
 
     if (!initData) {
+      console.error('Auth Error: No initData provided')
       return NextResponse.json({ error: 'No initData provided' }, { status: 400 })
     }
 
+    console.log('Validating initData...') // Log start of validation
     const validation = validateTelegramWebAppData(initData)
     
-    // For development without real Telegram data, we might want a bypass or mock
-    // if (!validation && process.env.NODE_ENV === 'development') { ... }
-    
     if (!validation) {
+      console.error('Auth Error: Validation failed. Token:', process.env.TELEGRAM_BOT_TOKEN?.slice(0, 5) + '...')
       return NextResponse.json({ error: 'Invalid initData' }, { status: 401 })
     }
 
     const { user } = validation
-    
+    console.log('User validated:', user.id, user.first_name)
+
     const supabase = await createServerSideClient()
     const { error: upsertError } = await supabase
       .from('users')
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       })
 
     if (upsertError) {
-      console.error('Error upserting user:', upsertError)
+      console.error('Database Error upserting user:', upsertError)
       return NextResponse.json({ error: 'Database error' }, { status: 500 })
     }
     
@@ -63,8 +64,7 @@ export async function POST(request: Request) {
     return response
 
   } catch (e) {
-    console.error('Auth error:', e)
+    console.error('Auth Internal Error:', e)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
-
