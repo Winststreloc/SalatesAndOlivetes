@@ -294,28 +294,57 @@ export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {
     const treats = prefs.treats || []
     const cuisines = prefs.cuisines || []
     
-    if ([...sides, ...proteins, ...veggies, ...treats, ...cuisines].length === 0) return []
+    const hasAnyPreferences = [...sides, ...proteins, ...veggies, ...treats, ...cuisines].length > 0
+    const hasCuisine = cuisines.length > 0
     
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
         
-        const prompt = `You are a creative chef. Suggest 4 distinct dinner ideas based on preferences.
+        let prompt = ''
+        
+        if (hasCuisine) {
+            // Restaurant-style dishes when cuisine is selected
+            prompt = `You are a creative chef. Suggest 4 distinct restaurant-style dinner ideas based on preferences.
 Return ONLY a JSON object with a key 'ideas' containing an array of strings (dish names).
 Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
 
 Preferred Sides: ${sides.join(', ') || 'Any'}
 Preferred Proteins: ${proteins.join(', ') || 'Any'}
 Preferred Veggies: ${veggies.join(', ') || 'Any'}
-Cuisines: ${cuisines.join(', ') || 'Any'}
-Treats/Cheat meal desires: ${treats.join(', ')}
+Cuisines: ${cuisines.join(', ')}
+Treats/Cheat meal desires: ${treats.join(', ') || 'None'}
 
 Guidelines:
-1. Mix comfort food and healthy options based on choices.
-2. If 'Treats' are selected, include at least one option from there.
-3. Use different cooking methods.
-4. Suggest COMPLETE dish names.
+1. Suggest RESTAURANT-STYLE dishes from the selected cuisines (${cuisines.join(', ')}).
+2. Use authentic names and cooking techniques from these cuisines.
+3. Make dishes sophisticated and restaurant-quality.
+4. If 'Treats' are selected, include at least one option from there.
+5. Suggest COMPLETE dish names with proper cuisine terminology.
 
 Return ONLY valid JSON, no other text.`
+        } else {
+            // Simple home-style dishes when no cuisine is selected
+            prompt = `You are a home cook. Suggest 4 distinct simple, everyday home-style dinner ideas based on preferences.
+Return ONLY a JSON object with a key 'ideas' containing an array of strings (dish names).
+Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
+
+${hasAnyPreferences ? `Preferred Sides: ${sides.join(', ') || 'Any'}
+Preferred Proteins: ${proteins.join(', ') || 'Any'}
+Preferred Veggies: ${veggies.join(', ') || 'Any'}
+Treats/Cheat meal desires: ${treats.join(', ') || 'None'}` : 'No specific preferences - suggest common home meals.'}
+
+Guidelines:
+1. Suggest SIMPLE, EVERYDAY home-style dishes (like "гречка с сосисками", "макароны с котлетой", "рис с курицей").
+2. Use common, accessible ingredients that people cook at home regularly.
+3. Keep dishes practical and easy to prepare.
+4. Avoid fancy restaurant names - use simple, straightforward dish descriptions.
+5. If preferences are provided, use them, but keep it simple and homey.
+6. Suggest COMPLETE dish names in simple language.
+
+Examples of good home-style dishes: гречка с сосисками, макароны с фаршем, рис с курицей, картошка с котлетой, плов, борщ, суп с фрикадельками.
+
+Return ONLY valid JSON, no other text.`
+        }
 
         const result = await model.generateContent(prompt)
         const response = await result.response
