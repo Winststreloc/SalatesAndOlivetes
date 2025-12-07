@@ -187,7 +187,7 @@ export function Dashboard() {
                 <div className="space-y-6">
                    {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => (
                        <Droppable key={dayIndex} droppableId={String(dayIndex)}>
-                           {(provided) => (
+                           {(provided: any) => (
                                <div 
                                  ref={provided.innerRef}
                                  {...provided.droppableProps}
@@ -203,7 +203,7 @@ export function Dashboard() {
                                    <div className="p-2 space-y-2 min-h-[50px]">
                                        {dishesByDay[dayIndex].map((dish, index) => (
                                            <Draggable key={dish.id} draggableId={dish.id} index={index}>
-                                               {(provided) => (
+                                               {(provided: any) => (
                                                    <div
                                                        ref={provided.innerRef}
                                                        {...provided.draggableProps}
