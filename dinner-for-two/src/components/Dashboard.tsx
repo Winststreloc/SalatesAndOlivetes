@@ -53,17 +53,23 @@ export function Dashboard() {
   const [isLoadingDishes, setIsLoadingDishes] = useState(true)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const channelRef = useRef<any>(null)
+  const isMountedRef = useRef(true)
   
   const refreshDishes = async () => {
+    if (!isMountedRef.current) return
     setIsLoadingDishes(true)
     try {
       const data = await getDishes()
-      setDishes(data)
-      setLastUpdate(new Date())
-      // Also check for partner when refreshing dishes
-      await checkHasPartner()
+      if (isMountedRef.current) {
+        setDishes(data)
+        setLastUpdate(new Date())
+        // Also check for partner when refreshing dishes
+        await checkHasPartner()
+      }
     } finally {
-      setIsLoadingDishes(false)
+      if (isMountedRef.current) {
+        setIsLoadingDishes(false)
+      }
     }
   }
 
@@ -73,14 +79,28 @@ export function Dashboard() {
   }
 
   const loadManualIngredients = async () => {
+      if (!isMountedRef.current) return
       const data = await getManualIngredients()
-      setManualIngredients(data)
+      if (isMountedRef.current) {
+        setManualIngredients(data)
+      }
   }
 
   const checkHasPartner = async () => {
+      if (!isMountedRef.current) return
       const hasPartnerResult = await hasPartner()
-      setHasPartnerUser(hasPartnerResult)
+      if (isMountedRef.current) {
+        setHasPartnerUser(hasPartnerResult)
+      }
   }
+
+  useEffect(() => {
+    isMountedRef.current = true
+    
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (!coupleId) return // Wait for coupleId to be available
@@ -100,6 +120,13 @@ export function Dashboard() {
       }
     })
     
+    // Safe state update helper
+    const safeUpdate = (updateFn: () => void) => {
+      if (isMountedRef.current) {
+        updateFn()
+      }
+    }
+    
     // Subscribe to dishes changes for this couple
     channel
         .on(
@@ -116,19 +143,23 @@ export function Dashboard() {
                 // Optimistic updates based on event type
                 if (payload.eventType === 'INSERT') {
                     // New dish added - refresh to get full data with ingredients
-                    setTimeout(() => refreshDishes(), 100)
+                    setTimeout(() => safeUpdate(() => refreshDishes()), 100)
                 } else if (payload.eventType === 'UPDATE') {
                     // Dish updated - update local state immediately
-                    setDishes(prev => prev.map(d => 
-                        d.id === payload.new.id ? { ...d, ...payload.new } : d
-                    ))
+                    safeUpdate(() => {
+                      setDishes(prev => prev.map(d => 
+                          d.id === payload.new.id ? { ...d, ...payload.new } : d
+                      ))
+                    })
                     // Then refresh to get related ingredients
-                    setTimeout(() => refreshDishes(), 100)
+                    setTimeout(() => safeUpdate(() => refreshDishes()), 100)
                 } else if (payload.eventType === 'DELETE') {
                     // Dish deleted - remove from local state
-                    setDishes(prev => prev.filter(d => d.id !== payload.old.id))
+                    safeUpdate(() => {
+                      setDishes(prev => prev.filter(d => d.id !== payload.old.id))
+                    })
                 } else {
-                    refreshDishes()
+                    safeUpdate(() => refreshDishes())
                 }
             }
         )
@@ -144,20 +175,48 @@ export function Dashboard() {
             (payload) => {
                 console.log('🔔 Realtime ingredients update:', payload.eventType, payload)
                 // Ingredients changed - refresh dishes to get updated ingredient lists
-                setTimeout(() => refreshDishes(), 100)
+                setTimeout(() => safeUpdate(() => refreshDishes()), 100)
+            }
+        )
+        .on(
+            'postgres_changes',
+            { 
+                event: '*', 
+                schema: 'public', 
+                table: 'manual_ingredients',
+                filter: `couple_id=eq.${coupleId}`
+            },
+            (payload) => {
+                console.log('🔔 Realtime manual ingredients update:', payload.eventType, payload)
+                // Manual ingredients changed - refresh
+                setTimeout(() => safeUpdate(() => loadManualIngredients()), 100)
             }
         )
         .subscribe((status) => {
             console.log('📡 Realtime subscription status:', status)
-            setIsRealtimeConnected(status === 'SUBSCRIBED')
+            safeUpdate(() => setIsRealtimeConnected(status === 'SUBSCRIBED'))
+            
+            if (status === 'CHANNEL_ERROR') {
+              console.error('❌ Realtime channel error')
+              safeUpdate(() => setIsRealtimeConnected(false))
+            } else if (status === 'TIMED_OUT') {
+              console.warn('⏱️ Realtime connection timed out')
+              safeUpdate(() => setIsRealtimeConnected(false))
+            } else if (status === 'CLOSED') {
+              console.warn('🔒 Realtime channel closed')
+              safeUpdate(() => setIsRealtimeConnected(false))
+            }
         })
 
     channelRef.current = channel
 
     return () => {
         console.log('🔌 Cleaning up Realtime subscription')
-        supabase.removeChannel(channel)
-        channelRef.current = null
+        isMountedRef.current = false
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current)
+          channelRef.current = null
+        }
     }
   }, [coupleId])
 
@@ -173,15 +232,24 @@ export function Dashboard() {
         description: t.deleteDishConfirm || 'Are you sure you want to delete this dish?',
         onConfirm: async () => {
           setConfirmDialog(null)
+          if (!isMountedRef.current) return
+          
           try {
-            setDishes(prev => prev.filter(d => d.id !== id))
+            // Optimistic update
+            if (isMountedRef.current) {
+              setDishes(prev => prev.filter(d => d.id !== id))
+            }
             await deleteDish(id)
-            showToast.success(t.deleteSuccess || 'Dish deleted successfully')
+            if (isMountedRef.current) {
+              showToast.success(t.deleteSuccess || 'Dish deleted successfully')
+            }
           } catch (e: any) {
             console.error('Failed to delete dish:', e)
-            // Revert optimistic update
-            refreshDishes()
-            showToast.error(e.message || 'Failed to delete dish')
+            // Revert optimistic update only if component is still mounted
+            if (isMountedRef.current) {
+              refreshDishes()
+              showToast.error(e.message || 'Failed to delete dish')
+            }
           }
         }
       })
