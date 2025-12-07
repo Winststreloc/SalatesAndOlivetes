@@ -67,7 +67,7 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
 
   if (showSettings) {
       return (
-          <div className="p-4 bg-white rounded-lg shadow h-full flex flex-col">
+          <div className="p-4 bg-card rounded-lg shadow h-full flex flex-col border border-border">
               <h2 className="font-bold text-lg mb-4">{t.settings}</h2>
               
               <div className="flex-1 overflow-auto space-y-6 pr-2">
@@ -103,16 +103,16 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
 
   return (
       <div className="space-y-4">
-          <div className="flex justify-between items-center bg-blue-50 p-4 rounded-lg">
-             <Button variant="outline" onClick={() => setShowSettings(true)} size="sm" className="bg-white">
+          <div className="flex justify-between items-center bg-muted p-4 rounded-lg">
+             <Button variant="outline" onClick={() => setShowSettings(true)} size="sm" className="bg-card">
                  <Settings className="w-4 h-4 mr-2" />
                  {t.settings}
              </Button>
           </div>
           
-          <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-gray-50 min-h-[300px]">
+          <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-lg bg-muted min-h-[300px]">
                {ideas.length === 0 ? (
-                   <div className="text-center text-gray-500 mb-8 max-w-xs">
+                   <div className="text-center text-muted-foreground mb-8 max-w-xs">
                        <Lightbulb className="w-16 h-16 mx-auto mb-4 text-yellow-400 opacity-50" />
                        <p className="text-lg font-medium">{t.noIdeas}</p>
                    </div>

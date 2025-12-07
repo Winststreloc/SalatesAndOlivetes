@@ -38,14 +38,14 @@ export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 p-2 bg-gray-50 rounded">
+    <form onSubmit={handleSubmit} className="flex gap-2 p-2 bg-muted rounded">
       <Input 
         autoFocus
         placeholder={t.addDishPlaceholder}
         value={name}
         onChange={(e) => setName(e.target.value)}
         disabled={loading}
-        className="bg-white"
+        className="bg-card"
       />
       <Button type="submit" disabled={loading} size="sm">
         {loading ? '...' : t.add}

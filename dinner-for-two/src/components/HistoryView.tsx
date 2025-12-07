@@ -96,11 +96,11 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : plans.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center text-gray-500">
+          <CardContent className="py-8 text-center text-muted-foreground">
             {t.noHistory}
           </CardContent>
         </Card>
@@ -111,10 +111,10 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
               <CardContent className="p-4 flex justify-between items-center">
                 <div>
                   <div className="font-medium flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
                     {t.weekOf} {formatDate(plan.week_start_date)}
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-muted-foreground mt-1">
                     {Array.isArray(plan.dishes) ? plan.dishes.length : 0} {plan.dishes?.length === 1 ? 'dish' : 'dishes'}
                   </div>
                 </div>
@@ -133,7 +133,7 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
             <DialogTitle>Load Week</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               This will replace your current week plan. Are you sure?
             </p>
             <div className="flex gap-2 justify-end">

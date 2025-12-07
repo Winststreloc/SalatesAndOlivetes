@@ -11,6 +11,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { useLang } from './LanguageProvider'
 import { useAuth } from './AuthProvider'
 import { useTheme } from './ThemeProvider'
@@ -418,20 +419,20 @@ export function Dashboard() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 relative">
-       <div className="flex justify-between p-3 bg-white border-b items-center shadow-sm z-10">
+    <div className="flex flex-col h-screen bg-background relative">
+       <div className="flex justify-between p-3 bg-card border-b border-border items-center shadow-sm z-10">
          <div className="flex items-center space-x-2">
              <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
                 <Key className="h-4 w-4" />
              </Button>
-             <h1 className="font-semibold text-sm text-gray-700">S&O</h1>
+             <h1 className="font-semibold text-sm text-foreground">S&O</h1>
              {isRealtimeConnected ? (
                  <span title="Realtime connected">
                      <Wifi className="h-3 w-3 text-green-500" />
                  </span>
              ) : (
                  <span title="Realtime disconnected">
-                     <WifiOff className="h-3 w-3 text-gray-400" />
+                     <WifiOff className="h-3 w-3 text-muted-foreground" />
                  </span>
              )}
          </div>
@@ -459,7 +460,7 @@ export function Dashboard() {
                        <CardHeader className="p-4 font-bold text-center">{t.inviteCode}</CardHeader>
                    </CardHeader>
                    <CardContent className="text-center pb-6">
-                       <div className="p-3 bg-gray-100 rounded font-mono select-all text-xl font-bold mb-4">
+                       <div className="p-3 bg-muted rounded font-mono select-all text-xl font-bold mb-4 text-foreground">
                            {inviteCode || '...'}
                        </div>
                        <div className="mb-4">
@@ -545,9 +546,9 @@ export function Dashboard() {
                                <div 
                                  ref={provided.innerRef}
                                  {...provided.droppableProps}
-                                 className="bg-white rounded-lg shadow-sm border overflow-hidden"
-                               >
-                                   <div className="bg-gray-100 p-3 font-semibold text-gray-700 flex justify-between items-center">
+                                 className="bg-card rounded-lg shadow-sm border border-border overflow-hidden"
+                                       >
+                                           <div className="bg-muted p-3 font-semibold text-foreground flex justify-between items-center">
                                        <span>{t.days[dayIndex]}</span>
                                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setAddingDay(dayIndex)}>
                                            <Plus className="h-4 w-4" />
@@ -562,19 +563,19 @@ export function Dashboard() {
                                                        ref={provided.innerRef}
                                                        {...provided.draggableProps}
                                                        {...provided.dragHandleProps}
-                                                       className={`border rounded p-3 relative group bg-white ${dish.status === 'proposed' ? 'border-dashed border-orange-300' : 'border-green-500'}`}
+                                                       className={`border border-border rounded p-3 relative group bg-card ${dish.status === 'proposed' ? 'border-dashed border-orange-300' : 'border-green-500'}`}
                                                        style={{ ...provided.draggableProps.style }}
                                                    >
                                                        <div className="flex justify-between items-start">
                                                            <div className="font-medium pr-6 flex items-center cursor-pointer hover:text-blue-600 transition-colors" onClick={() => setSelectedDish(dish)}>
-                                                               <BookOpen className="w-4 h-4 mr-2 text-gray-400" />
+                                                                   <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
                                                                {dish.name}
                                                            </div>
                                                            <div className="absolute top-2 right-2 flex gap-2">
                                                                {/* Show approve button only if user is NOT the creator */}
                                                                {dish.status === 'proposed' && dish.created_by !== user?.id && (
                                                                    <button 
-                                                                     className="text-gray-300 hover:text-green-500"
+                                                                     className="text-muted-foreground hover:text-green-500"
                                                                      onPointerDown={(e) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
                                                                      title={t.approve}
                                                                    >
@@ -593,7 +594,7 @@ export function Dashboard() {
                                                                )}
                                                                <button 
                                                                   onClick={() => handleDeleteDish(dish.id)}
-                                                                  className="text-gray-300 hover:text-red-500"
+                                                                  className="text-muted-foreground hover:text-red-500"
                                                                   onPointerDown={(e) => e.stopPropagation()}
                                                                >
                                                                    <Trash2 className="h-4 w-4" />
@@ -602,7 +603,7 @@ export function Dashboard() {
                                                        </div>
                                                        <div className="mt-1">
                                                            {dish.ingredients && dish.ingredients.length > 0 ? (
-                                                                <p className="text-xs text-gray-500">
+                                                                <p className="text-xs text-muted-foreground">
                                                                   {dish.ingredients.map((i: any) => i.name).join(', ')}
                                                                 </p>
                                                             ) : (
@@ -641,7 +642,7 @@ export function Dashboard() {
                                            />
                                        ) : (
                                            dishesByDay[dayIndex].length === 0 && (
-                                               <div className="text-xs text-gray-400 text-center py-2 cursor-pointer hover:text-gray-600" onClick={() => setAddingDay(dayIndex)}>
+                                               <div className="text-xs text-muted-foreground text-center py-2 cursor-pointer hover:text-foreground" onClick={() => setAddingDay(dayIndex)}>
                                                    + {t.add}
                                                </div>
                                            )
@@ -658,13 +659,13 @@ export function Dashboard() {
           {tab === 'list' && (
             <div className="space-y-4">
                {shoppingList.length === 0 ? (
-                 <p className="text-gray-500 text-center mt-10">{t.selectDishesHint}</p>
+                 <p className="text-muted-foreground text-center mt-10">{t.selectDishesHint}</p>
                ) : (
                  <>
                    {/* Search and Sort Controls */}
                    <div className="flex gap-2 mb-4">
                      <div className="flex-1 relative">
-                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                        <Input
                          placeholder={t.search}
                          value={searchQuery}
@@ -672,15 +673,15 @@ export function Dashboard() {
                          className="pl-10"
                        />
                      </div>
-                     <select
+                     <Select
                        value={sortBy}
                        onChange={(e) => setSortBy(e.target.value as 'alphabetical' | 'category' | 'amount')}
-                       className="px-3 py-2 border rounded-md text-sm bg-white"
+                       className="w-auto min-w-[140px]"
                      >
                        <option value="category">{t.sortCategory}</option>
                        <option value="alphabetical">{t.sortAlphabetical}</option>
                        <option value="amount">{t.sortAmount}</option>
-                     </select>
+                     </Select>
                    </div>
                    
                    {/* Export Buttons */}
@@ -703,20 +704,20 @@ export function Dashboard() {
                        
                        return (
                          <div key={category} className="mb-4">
-                           <h3 className="font-semibold text-sm text-gray-700 mb-2 px-2">
+                           <h3 className="font-semibold text-sm text-foreground mb-2 px-2">
                              {categoryLabels[category]}
                            </h3>
                            <div className="space-y-2">
                              {items.map((item, idx) => (
-                               <div key={`${category}-${idx}`} className="flex items-center space-x-3 p-3 bg-white rounded shadow-sm">
+                               <div key={`${category}-${idx}`} className="flex items-center space-x-3 p-3 bg-card rounded shadow-sm border border-border">
                                  <Checkbox 
                                    id={`ing-${category}-${idx}`} 
                                    checked={item.is_purchased}
                                    onCheckedChange={() => handleToggleIngredient(item)}
                                  />
-                                 <label htmlFor={`ing-${category}-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-gray-400' : ''}`}>
+                                 <label htmlFor={`ing-${category}-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                                    <span className="font-medium">{item.name}</span>
-                                   <span className="text-gray-500 ml-2">
+                                   <span className="text-muted-foreground ml-2">
                                      {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
                                    </span>
                                  </label>
@@ -729,15 +730,15 @@ export function Dashboard() {
                    ) : (
                      /* Flat list for alphabetical/amount sorting */
                      shoppingList.map((item, idx) => (
-                       <div key={idx} className="flex items-center space-x-3 p-3 bg-white rounded shadow-sm">
+                       <div key={idx} className="flex items-center space-x-3 p-3 bg-card rounded shadow-sm border border-border">
                          <Checkbox 
                            id={`ing-${idx}`} 
                            checked={item.is_purchased}
                            onCheckedChange={() => handleToggleIngredient(item)}
                          />
-                         <label htmlFor={`ing-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-gray-400' : ''}`}>
+                         <label htmlFor={`ing-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                            <span className="font-medium">{item.name}</span>
-                           <span className="text-gray-500 ml-2">
+                           <span className="text-muted-foreground ml-2">
                              {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
                            </span>
                          </label>
@@ -750,7 +751,7 @@ export function Dashboard() {
           )}
        </div>
        
-       <div className="fixed bottom-0 left-0 right-0 border-t p-2 flex justify-around bg-white shadow-up z-20">
+       <div className="fixed bottom-0 left-0 right-0 border-t border-border p-2 flex justify-around bg-card shadow-up z-20">
           <Button variant={tab === 'plan' ? 'default' : 'ghost'} onClick={() => setTab('plan')} className="flex-1 mx-1">
             <Calendar className="w-4 h-4 mr-2" />
             <span className="text-xs">{t.planMenu}</span>

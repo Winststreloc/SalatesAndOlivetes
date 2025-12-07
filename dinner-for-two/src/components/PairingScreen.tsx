@@ -77,7 +77,7 @@ export function PairingScreen() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 items-center justify-center h-screen bg-gray-50 relative">
+    <div className="flex flex-col gap-4 p-4 items-center justify-center h-screen bg-background relative">
       <div className="absolute top-4 right-4">
          <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
             {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
@@ -91,7 +91,7 @@ export function PairingScreen() {
            {!createdCode ? (
              <>
                <Button onClick={handleCreate} className="w-full">{t.startNew}</Button>
-               <div className="text-center text-sm text-gray-500">{t.or}</div>
+               <div className="text-center text-sm text-muted-foreground">{t.or}</div>
                <div className="flex gap-2">
                  <Input 
                    placeholder={t.enterCode}
@@ -104,7 +104,7 @@ export function PairingScreen() {
            ) : (
              <div className="text-center">
                <p className="mb-2">{t.shareCode}</p>
-               <div className="p-4 bg-gray-100 rounded font-mono select-all text-lg font-bold mb-4">
+               <div className="p-4 bg-muted rounded font-mono select-all text-lg font-bold mb-4 text-foreground">
                  {createdCode}
                </div>
                <div className="mb-4">
