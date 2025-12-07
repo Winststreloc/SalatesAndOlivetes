@@ -27,7 +27,9 @@ const translations = {
     loading: "...",
     inviteCode: "Your Invite Code",
     delete: "Delete",
-    close: "Close"
+    close: "Close",
+    shareLink: "Send to Partner",
+    copied: "Copied!"
   },
   ru: {
     startNew: "Создать пару",
@@ -51,7 +53,9 @@ const translations = {
     loading: "...",
     inviteCode: "Ваш код приглашения",
     delete: "Удалить",
-    close: "Закрыть"
+    close: "Закрыть",
+    shareLink: "Отправить партнеру",
+    copied: "Скопировано!"
   }
 }
 

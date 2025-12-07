@@ -8,7 +8,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
-import { Trash2, Key } from 'lucide-react'
+import { Trash2, Key, Share2 } from 'lucide-react'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -44,6 +44,18 @@ export function Dashboard() {
       setDishes(prev => prev.filter(d => d.id !== id))
       await deleteDish(id)
       refreshDishes()
+  }
+  
+  const handleShare = () => {
+    if (!inviteCode) return
+    const inviteText = `Join me in Dinner for Two! My code: ${inviteCode}`
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteText)}`
+    
+    if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.openTelegramLink(url)
+    } else {
+        window.open(url, '_blank')
+    }
   }
 
   const shoppingList = useMemo(() => {
@@ -115,7 +127,13 @@ export function Dashboard() {
                        <div className="p-3 bg-gray-100 rounded font-mono select-all text-xl font-bold mb-4">
                            {inviteCode || '...'}
                        </div>
-                       <Button onClick={() => setShowInvite(false)}>{t.close}</Button>
+                       
+                       <Button className="w-full flex items-center gap-2 mb-2" onClick={handleShare}>
+                         <Share2 className="w-4 h-4" />
+                         {t.shareLink}
+                       </Button>
+
+                       <Button variant="ghost" onClick={() => setShowInvite(false)}>{t.close}</Button>
                    </CardContent>
                </Card>
            </div>

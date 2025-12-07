@@ -19,7 +19,8 @@ export async function addDish(dishName: string) {
   let ingredients: any[] = []
   
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Fallback to gemini-pro if flash is not available in the region/SDK version
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `
       You are a chef. 
       Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}". 

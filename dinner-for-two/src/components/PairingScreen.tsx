@@ -1,10 +1,12 @@
 'use client'
+
 import { useState } from 'react'
 import { useAuth } from './AuthProvider'
 import { useLang } from './LanguageProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Share2 } from 'lucide-react'
 
 export function PairingScreen() {
   const { createCouple, joinCouple } = useAuth()
@@ -24,6 +26,20 @@ export function PairingScreen() {
         await joinCouple(inviteCode)
     } catch (e) {
         alert(t.invalidCode)
+    }
+  }
+
+  const handleShare = () => {
+    if (!createdCode) return
+    const inviteText = `Join me in Dinner for Two! My code: ${createdCode}`
+    // Use Telegram URL scheme to open share dialog
+    // This will open a chat selection to send the message
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteText)}`
+    
+    if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.openTelegramLink(url)
+    } else {
+        window.open(url, '_blank')
     }
   }
 
@@ -58,8 +74,14 @@ export function PairingScreen() {
                <div className="p-4 bg-gray-100 rounded font-mono select-all text-lg font-bold">
                  {createdCode}
                </div>
+               
+               <Button className="w-full mt-4 flex items-center gap-2" onClick={handleShare}>
+                 <Share2 className="w-4 h-4" />
+                 {t.shareLink}
+               </Button>
+               
                <p className="text-xs text-gray-500 mt-4">{t.waiting}</p>
-               <Button className="mt-4" variant="ghost" onClick={() => window.location.reload()}>{t.refresh}</Button>
+               <Button className="mt-2" variant="ghost" onClick={() => window.location.reload()}>{t.refresh}</Button>
              </div>
            )}
         </CardContent>
