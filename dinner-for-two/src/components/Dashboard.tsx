@@ -153,10 +153,15 @@ export function Dashboard() {
                         if (dish && isMountedRef.current) {
                           safeUpdate(() => {
                             setDishes(prev => {
-                              // Check if dish already exists (avoid duplicates)
-                              if (prev.some(d => d.id === dish.id)) {
-                                return prev.map(d => d.id === dish.id ? dish : d)
+                              // Check if dish already exists (from optimistic update)
+                              const existingIndex = prev.findIndex(d => d.id === dish.id)
+                              if (existingIndex >= 0) {
+                                // Update existing dish with full data (including ingredients)
+                                const updated = [...prev]
+                                updated[existingIndex] = dish
+                                return updated
                               }
+                              // Add new dish if it doesn't exist
                               return [...prev, dish]
                             })
                           })
@@ -450,20 +455,9 @@ export function Dashboard() {
             })
           }
           
-          // Refresh to get full data (with ingredients when they're generated)
-          setTimeout(() => {
-            if (isMountedRef.current) {
-              refreshDishes()
-            }
-          }, 500)
-          
           // Pass LANG here - generate ingredients asynchronously
-          generateDishIngredients(dish.id, dish.name, lang).then(() => {
-              // Refresh again after ingredients are generated
-              if (isMountedRef.current) {
-                refreshDishes()
-              }
-          }).catch(async (err) => {
+          // Ingredients will be added via WebSocket when generated
+          generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
             console.error('Failed to generate ingredients:', err)
             const errorMessage = err?.message || ''
             const isValidationError = errorMessage.includes('valid dish name') || 
@@ -1200,15 +1194,8 @@ export function Dashboard() {
                                                       })
                                                   }
                                                   
-                                                  // Refresh to get full data (with ingredients when generated)
-                                                  if (isMountedRef.current) {
-                                                    await refreshDishes()
-                                                    setTimeout(() => {
-                                                      if (isMountedRef.current) {
-                                                        refreshDishes()
-                                                      }
-                                                    }, 1000)
-                                                  }
+                                                  // Ingredients will be added via WebSocket when generated
+                                                  // No need to refresh - WebSocket will update the dish automatically
                                               }}
                                               onRemove={(dishId) => {
                                                 // Remove dish from local state if validation fails
