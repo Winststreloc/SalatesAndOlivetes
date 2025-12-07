@@ -17,6 +17,8 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
   const [saving, setSaving] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     loadPlans()
