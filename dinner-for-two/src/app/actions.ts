@@ -40,7 +40,7 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   let recipe: string = ''
   
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-live" });
     const prompt = `
       You are a chef. 
       Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}" and a key 'recipe' containing cooking instructions.
