@@ -54,6 +54,7 @@ export function Dashboard() {
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const channelRef = useRef<any>(null)
   const isMountedRef = useRef(true)
+  const deletingDishesRef = useRef<Set<string>>(new Set())
   
   const refreshDishes = async () => {
     if (!isMountedRef.current) return
@@ -150,14 +151,24 @@ export function Dashboard() {
                 } else if (payload.eventType === 'UPDATE') {
                     // Dish updated - update local state immediately
                     safeUpdate(() => {
-                      setDishes(prev => prev.map(d => 
-                          d.id === payload.new.id ? { ...d, ...payload.new } : d
-                      ))
+                      if (!isMountedRef.current) return
+                      setDishes(prev => {
+                        if (!isMountedRef.current) return prev
+                        return prev.map(d => 
+                            d.id === payload.new.id ? { ...d, ...payload.new } : d
+                        )
+                      })
                     })
                     // Then refresh to get related ingredients
                     setTimeout(() => safeUpdate(() => refreshDishes()), 100)
                 } else if (payload.eventType === 'DELETE') {
                     // Dish deleted - remove from local state
+                    // Skip if we're already deleting this dish (optimistic update already handled it)
+                    if (deletingDishesRef.current.has(payload.old.id)) {
+                      console.log('⏭️ Skipping Realtime DELETE - already handled optimistically')
+                      return
+                    }
+                    
                     // Only remove if it still exists (avoid duplicate removal)
                     safeUpdate(() => {
                       setDishes(prev => {
@@ -253,17 +264,34 @@ export function Dashboard() {
           setConfirmDialog(null)
           if (!isMountedRef.current) return
           
+          // Mark dish as being deleted to prevent Realtime handler from processing it
+          deletingDishesRef.current.add(id)
+          
           try {
-            // Optimistic update
+            // Optimistic update - remove immediately from UI
             if (isMountedRef.current) {
-              setDishes(prev => prev.filter(d => d.id !== id))
+              setDishes(prev => {
+                // Double check component is still mounted inside setState callback
+                if (!isMountedRef.current) return prev
+                return prev.filter(d => d.id !== id)
+              })
             }
+            
+            // Delete from database
             await deleteDish(id)
+            
+            // Remove from deleting set after a delay to allow Realtime event to be ignored
+            setTimeout(() => {
+              deletingDishesRef.current.delete(id)
+            }, 1000)
+            
             if (isMountedRef.current) {
               showToast.success(t.deleteSuccess || 'Dish deleted successfully')
             }
           } catch (e: any) {
             console.error('Failed to delete dish:', e)
+            // Remove from deleting set on error
+            deletingDishesRef.current.delete(id)
             // Revert optimistic update only if component is still mounted
             if (isMountedRef.current) {
               refreshDishes()
@@ -327,11 +355,14 @@ export function Dashboard() {
           
           // Optimistic update - add dish to local state immediately
           if (isMountedRef.current) {
-            setDishes(prev => [...prev, {
-                ...dish,
-                ingredients: [],
-                status: 'proposed'
-            }])
+            setDishes(prev => {
+              if (!isMountedRef.current) return prev
+              return [...prev, {
+                  ...dish,
+                  ingredients: [],
+                  status: 'proposed'
+              }]
+            })
           }
           
           // Refresh to get full data (with ingredients when they're generated)
@@ -1006,11 +1037,14 @@ export function Dashboard() {
                                                   
                                                   // Optimistic update - add dish immediately to local state
                                                   if (dish && isMountedRef.current) {
-                                                      setDishes(prev => [...prev, {
-                                                          ...dish,
-                                                          ingredients: [],
-                                                          status: 'proposed'
-                                                      }])
+                                                      setDishes(prev => {
+                                                        if (!isMountedRef.current) return prev
+                                                        return [...prev, {
+                                                            ...dish,
+                                                            ingredients: [],
+                                                            status: 'proposed'
+                                                        }]
+                                                      })
                                                   }
                                                   
                                                   // Refresh to get full data (with ingredients when generated)
