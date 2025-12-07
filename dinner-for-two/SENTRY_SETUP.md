@@ -73,3 +73,4 @@ Sentry автоматически отслеживает:
 - [Документация Sentry для Next.js](https://docs.sentry.io/platforms/javascript/guides/nextjs/)
 - [Настройка source maps](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/#upload-source-maps)
 
+
