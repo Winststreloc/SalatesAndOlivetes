@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { addDish, generateDishIngredients } from '@/app/actions'
+import { addDish, generateDishIngredients, deleteDish } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLang } from './LanguageProvider'
 import { showToast } from '@/utils/toast'
 
-export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: (dish?: any) => void, onCancel: () => void }) {
+export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number, onAdded: (dish?: any) => void, onCancel: () => void, onRemove?: (dishId: string) => void }) {
   const { t, lang } = useLang()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -26,14 +26,30 @@ export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: 
       onAdded(dish) 
       
       // 2. Async generate with LANGUAGE (don't wait)
-      generateDishIngredients(dish.id, dish.name, lang).catch(err => {
+      generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
         console.error('Failed to generate ingredients:', err)
-        // Show error if validation failed
-        if (err.message && (err.message.includes('valid dish name') || err.message.includes('INVALID_INPUT') || err.message.includes('не название блюда') || err.message.includes('not a food-related'))) {
-          showToast.error(err.message || (t.invalidDishName || 'Please enter a valid dish name (food-related only)'))
-          // Remove the dish that was added optimistically
-          // Note: The dish is already added, but we can't easily remove it here
-          // The user will see the error and can delete it manually if needed
+        const errorMessage = err?.message || ''
+        const isValidationError = errorMessage.includes('valid dish name') || 
+                                  errorMessage.includes('INVALID_INPUT') || 
+                                  errorMessage.includes('не название блюда') || 
+                                  errorMessage.includes('not a food-related') ||
+                                  errorMessage.includes('связанное с едой') ||
+                                  errorMessage.includes('food-related')
+        
+        if (isValidationError) {
+          // Show error to user
+          showToast.error(errorMessage || (t.invalidDishName || 'Please enter a valid dish name (food-related only)'))
+          // Remove from local state immediately
+          if (onRemove) {
+            onRemove(dish.id)
+          }
+          // Delete the invalid dish from database
+          try {
+            await deleteDish(dish.id)
+            console.log('Deleted invalid dish:', dish.id)
+          } catch (deleteErr) {
+            console.error('Failed to delete invalid dish:', deleteErr)
+          }
         }
       })
       

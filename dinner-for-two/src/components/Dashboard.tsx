@@ -463,11 +463,29 @@ export function Dashboard() {
               if (isMountedRef.current) {
                 refreshDishes()
               }
-          }).catch(err => {
+          }).catch(async (err) => {
             console.error('Failed to generate ingredients:', err)
-            // Show error if validation failed
-            if (err.message && (err.message.includes('valid dish name') || err.message.includes('INVALID_INPUT') || err.message.includes('не название блюда') || err.message.includes('not a food-related'))) {
-              showToast.error(err.message || (t.invalidDishName || 'Please enter a valid dish name (food-related only)'))
+            const errorMessage = err?.message || ''
+            const isValidationError = errorMessage.includes('valid dish name') || 
+                                      errorMessage.includes('INVALID_INPUT') || 
+                                      errorMessage.includes('не название блюда') || 
+                                      errorMessage.includes('not a food-related') ||
+                                      errorMessage.includes('связанное с едой') ||
+                                      errorMessage.includes('food-related')
+            
+            if (isValidationError) {
+              // Show error to user
+              showToast.error(errorMessage || (t.invalidDishName || 'Please enter a valid dish name (food-related only)'))
+              // Remove from local state and delete from database
+              if (isMountedRef.current) {
+                setDishes(prev => prev.filter(d => d.id !== dish.id))
+                try {
+                  await deleteDish(dish.id)
+                  console.log('Deleted invalid dish:', dish.id)
+                } catch (deleteErr) {
+                  console.error('Failed to delete invalid dish:', deleteErr)
+                }
+              }
             }
           })
           
@@ -1191,7 +1209,13 @@ export function Dashboard() {
                                                       }
                                                     }, 1000)
                                                   }
-                                              }} 
+                                              }}
+                                              onRemove={(dishId) => {
+                                                // Remove dish from local state if validation fails
+                                                if (isMountedRef.current) {
+                                                  setDishes(prev => prev.filter(d => d.id !== dishId))
+                                                }
+                                              }}
                                               onCancel={() => setAddingDay(null)} 
                                            />
                                        ) : (
