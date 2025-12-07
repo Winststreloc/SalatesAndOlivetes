@@ -55,6 +55,7 @@ export function Dashboard() {
   const channelRef = useRef<any>(null)
   const isMountedRef = useRef(true)
   const deletingDishesRef = useRef<Set<string>>(new Set())
+  const recentlyAddedDishesRef = useRef<Set<string>>(new Set())
   
   const refreshDishes = async () => {
     if (!isMountedRef.current) return
@@ -124,13 +125,6 @@ export function Dashboard() {
       }
     })
     
-    // Safe state update helper
-    const safeUpdate = (updateFn: () => void) => {
-      if (isMountedRef.current) {
-        updateFn()
-      }
-    }
-    
     // Subscribe to dishes changes for this couple
     channel
         .on(
@@ -148,22 +142,34 @@ export function Dashboard() {
                 if (payload.eventType === 'INSERT') {
                     // New dish added - fetch only this dish with ingredients
                     const newDishId = (payload.new as any).id
-                    if (newDishId) {
+                    if (newDishId && isMountedRef.current) {
+                      // Skip if we recently added this dish optimistically (to avoid duplicate updates)
+                      if (recentlyAddedDishesRef.current.has(newDishId)) {
+                        console.log('⏭️ Skipping Realtime INSERT - already handled optimistically')
+                        // Remove from set after a delay
+                        setTimeout(() => {
+                          recentlyAddedDishesRef.current.delete(newDishId)
+                        }, 2000)
+                        return
+                      }
+                      
+                      // Use a ref to capture the current mounted state
+                      const currentMounted = isMountedRef.current
                       getDish(newDishId).then(dish => {
-                        if (dish && isMountedRef.current) {
-                          safeUpdate(() => {
-                            setDishes(prev => {
-                              // Check if dish already exists (from optimistic update)
-                              const existingIndex = prev.findIndex(d => d.id === dish.id)
-                              if (existingIndex >= 0) {
-                                // Update existing dish with full data (including ingredients)
-                                const updated = [...prev]
-                                updated[existingIndex] = dish
-                                return updated
-                              }
-                              // Add new dish if it doesn't exist
-                              return [...prev, dish]
-                            })
+                        if (!currentMounted || !isMountedRef.current) return
+                        if (dish) {
+                          setDishes(prev => {
+                            if (!isMountedRef.current) return prev
+                            // Check if dish already exists (from optimistic update)
+                            const existingIndex = prev.findIndex(d => d.id === dish.id)
+                            if (existingIndex >= 0) {
+                              // Update existing dish with full data (including ingredients)
+                              const updated = [...prev]
+                              updated[existingIndex] = dish
+                              return updated
+                            }
+                            // Add new dish if it doesn't exist
+                            return [...prev, dish]
                           })
                         }
                       }).catch(err => {
@@ -173,7 +179,8 @@ export function Dashboard() {
                 } else if (payload.eventType === 'UPDATE') {
                     // Dish updated - update local state immediately
                     const updatedDishId = (payload.new as any).id
-                    if (updatedDishId) {
+                    if (updatedDishId && isMountedRef.current) {
+                      const currentMounted = isMountedRef.current
                       // Check if recipe or status changed (might affect ingredients)
                       const hasRecipeChange = (payload.new as any).recipe !== undefined
                       const hasStatusChange = (payload.new as any).status !== undefined
@@ -181,31 +188,35 @@ export function Dashboard() {
                       if (hasRecipeChange || hasStatusChange) {
                         // Fetch full dish to get updated ingredients
                         getDish(updatedDishId).then(dish => {
-                          if (dish && isMountedRef.current) {
-                            safeUpdate(() => {
-                              setDishes(prev => prev.map(d => d.id === dish.id ? dish : d))
+                          if (!currentMounted || !isMountedRef.current) return
+                          if (dish) {
+                            setDishes(prev => {
+                              if (!isMountedRef.current) return prev
+                              return prev.map(d => d.id === dish.id ? dish : d)
                             })
                           }
                         }).catch(err => {
                           console.error('Failed to fetch updated dish:', err)
                           // Fallback to simple update
-                          safeUpdate(() => {
-                            setDishes(prev => prev.map(d => 
-                              d.id === updatedDishId ? { ...d, ...(payload.new as any) } : d
-                            ))
-                          })
+                          if (currentMounted && isMountedRef.current) {
+                            setDishes(prev => {
+                              if (!isMountedRef.current) return prev
+                              return prev.map(d => 
+                                d.id === updatedDishId ? { ...d, ...(payload.new as any) } : d
+                              )
+                            })
+                          }
                         })
                       } else {
                         // Simple field update, no need to fetch
-                        safeUpdate(() => {
-                          if (!isMountedRef.current) return
+                        if (isMountedRef.current) {
                           setDishes(prev => {
                             if (!isMountedRef.current) return prev
                             return prev.map(d => 
                               d.id === updatedDishId ? { ...d, ...(payload.new as any) } : d
                             )
                           })
-                        })
+                        }
                       }
                     }
                 } else if (payload.eventType === 'DELETE') {
@@ -217,8 +228,9 @@ export function Dashboard() {
                     }
                     
                     // Only remove if it still exists (avoid duplicate removal)
-                    safeUpdate(() => {
+                    if (isMountedRef.current) {
                       setDishes(prev => {
+                        if (!isMountedRef.current) return prev
                         const exists = prev.some(d => d.id === payload.old.id)
                         if (!exists) {
                           // Already removed, skip
@@ -226,9 +238,12 @@ export function Dashboard() {
                         }
                         return prev.filter(d => d.id !== payload.old.id)
                       })
-                    })
+                    }
                 } else {
-                    safeUpdate(() => refreshDishes())
+                    // Unknown event type - refresh dishes as fallback
+                    if (isMountedRef.current) {
+                      refreshDishes()
+                    }
                 }
             }
         )
@@ -245,11 +260,14 @@ export function Dashboard() {
                 console.log('🔔 Realtime ingredients update:', payload.eventType, payload)
                 // Ingredients changed - update only the affected dish
                 const dishId = (payload.new as any)?.dish_id || (payload.old as any)?.dish_id
-                if (dishId) {
+                if (dishId && isMountedRef.current) {
+                  const currentMounted = isMountedRef.current
                   getDish(dishId).then(dish => {
-                    if (dish && isMountedRef.current) {
-                      safeUpdate(() => {
-                        setDishes(prev => prev.map(d => d.id === dish.id ? dish : d))
+                    if (!currentMounted || !isMountedRef.current) return
+                    if (dish) {
+                      setDishes(prev => {
+                        if (!isMountedRef.current) return prev
+                        return prev.map(d => d.id === dish.id ? dish : d)
                       })
                     }
                   }).catch(err => {
@@ -272,33 +290,34 @@ export function Dashboard() {
                 if (payload.eventType === 'INSERT') {
                   // Add new manual ingredient
                   const newIngredient = payload.new as any
-                  if (newIngredient?.id) {
-                    safeUpdate(() => {
-                      setManualIngredients(prev => {
-                        // Check if already exists
-                        if (prev.some(ing => ing.id === newIngredient.id)) {
-                          return prev.map(ing => ing.id === newIngredient.id ? newIngredient : ing)
-                        }
-                        return [...prev, newIngredient]
-                      })
+                  if (newIngredient?.id && isMountedRef.current) {
+                    setManualIngredients(prev => {
+                      if (!isMountedRef.current) return prev
+                      // Check if already exists
+                      if (prev.some(ing => ing.id === newIngredient.id)) {
+                        return prev.map(ing => ing.id === newIngredient.id ? newIngredient : ing)
+                      }
+                      return [...prev, newIngredient]
                     })
                   }
                 } else if (payload.eventType === 'UPDATE') {
                   // Update existing manual ingredient
                   const updatedIngredient = payload.new as any
-                  if (updatedIngredient?.id) {
-                    safeUpdate(() => {
-                      setManualIngredients(prev => prev.map(ing => 
+                  if (updatedIngredient?.id && isMountedRef.current) {
+                    setManualIngredients(prev => {
+                      if (!isMountedRef.current) return prev
+                      return prev.map(ing => 
                         ing.id === updatedIngredient.id ? { ...ing, ...updatedIngredient } : ing
-                      ))
+                      )
                     })
                   }
                 } else if (payload.eventType === 'DELETE') {
                   // Remove manual ingredient
                   const deletedId = (payload.old as any)?.id
-                  if (deletedId) {
-                    safeUpdate(() => {
-                      setManualIngredients(prev => prev.filter(ing => ing.id !== deletedId))
+                  if (deletedId && isMountedRef.current) {
+                    setManualIngredients(prev => {
+                      if (!isMountedRef.current) return prev
+                      return prev.filter(ing => ing.id !== deletedId)
                     })
                   }
                 }
@@ -306,17 +325,25 @@ export function Dashboard() {
         )
         .subscribe((status) => {
             console.log('📡 Realtime subscription status:', status)
-            safeUpdate(() => setIsRealtimeConnected(status === 'SUBSCRIBED'))
+            if (isMountedRef.current) {
+              setIsRealtimeConnected(status === 'SUBSCRIBED')
+            }
             
             if (status === 'CHANNEL_ERROR') {
               console.error('❌ Realtime channel error')
-              safeUpdate(() => setIsRealtimeConnected(false))
+              if (isMountedRef.current) {
+                setIsRealtimeConnected(false)
+              }
             } else if (status === 'TIMED_OUT') {
               console.warn('⏱️ Realtime connection timed out')
-              safeUpdate(() => setIsRealtimeConnected(false))
+              if (isMountedRef.current) {
+                setIsRealtimeConnected(false)
+              }
             } else if (status === 'CLOSED') {
               console.warn('🔒 Realtime channel closed')
-              safeUpdate(() => setIsRealtimeConnected(false))
+              if (isMountedRef.current) {
+                setIsRealtimeConnected(false)
+              }
             }
         })
 
@@ -445,6 +472,12 @@ export function Dashboard() {
           
           // Optimistic update - add dish to local state immediately
           if (isMountedRef.current) {
+            // Mark as recently added to skip WebSocket INSERT event
+            recentlyAddedDishesRef.current.add(dish.id)
+            setTimeout(() => {
+              recentlyAddedDishesRef.current.delete(dish.id)
+            }, 2000)
+            
             setDishes(prev => {
               if (!isMountedRef.current) return prev
               return [...prev, {
@@ -1184,6 +1217,12 @@ export function Dashboard() {
                                                   
                                                   // Optimistic update - add dish immediately to local state
                                                   if (dish && isMountedRef.current) {
+                                                      // Mark as recently added to skip WebSocket INSERT event
+                                                      recentlyAddedDishesRef.current.add(dish.id)
+                                                      setTimeout(() => {
+                                                        recentlyAddedDishesRef.current.delete(dish.id)
+                                                      }, 2000)
+                                                      
                                                       setDishes(prev => {
                                                         if (!isMountedRef.current) return prev
                                                         return [...prev, {
