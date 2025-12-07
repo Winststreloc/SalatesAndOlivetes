@@ -81,7 +81,7 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   } else {
     // Generate new data
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-live' })
       
       const prompt = `You are a chef. 
 Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish and a key 'recipe' containing cooking instructions.
@@ -356,7 +356,7 @@ export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {
     const hasCuisine = cuisines.length > 0
     
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-live' })
         
         let prompt = ''
         
