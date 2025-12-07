@@ -29,6 +29,11 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
     
+    // Check for React infinite loop errors (error #310)
+    const isReactError = error.message?.includes('Minified React error') || 
+                        error.message?.includes('Maximum update depth exceeded') ||
+                        errorInfo.componentStack?.includes('useEffect')
+    
     // Log to Sentry with React component stack
     Sentry.captureException(error, {
       contexts: {
@@ -38,6 +43,13 @@ export class ErrorBoundary extends Component<Props, State> {
       },
       tags: {
         errorBoundary: true,
+        react_error: isReactError,
+        error_type: isReactError ? 'infinite_loop' : 'unknown',
+      },
+      extra: {
+        errorInfo,
+        errorMessage: error.message,
+        errorStack: error.stack,
       },
     })
   }

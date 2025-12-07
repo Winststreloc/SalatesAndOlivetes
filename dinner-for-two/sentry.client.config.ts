@@ -46,8 +46,42 @@ Sentry.init({
       }
     }
 
+    // Add React error context
+    if (event.exception) {
+      event.exception.values?.forEach((exception) => {
+        if (exception.value?.includes('Minified React error')) {
+          exception.value = `React Error: ${exception.value}`;
+          event.tags = { ...event.tags, react_error: true };
+        }
+      });
+    }
+
     return event;
   },
 });
+
+// Capture React errors that might not be caught by ErrorBoundary
+if (typeof window !== 'undefined') {
+  // Capture unhandled errors
+  window.addEventListener('error', (event) => {
+    if (event.error) {
+      Sentry.captureException(event.error, {
+        tags: { error_type: 'unhandled_error' },
+        contexts: {
+          react: {
+            errorBoundary: false,
+          },
+        },
+      });
+    }
+  });
+
+  // Capture unhandled promise rejections
+  window.addEventListener('unhandledrejection', (event) => {
+    Sentry.captureException(event.reason, {
+      tags: { error_type: 'unhandled_promise_rejection' },
+    });
+  });
+}
 
 

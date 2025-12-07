@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
@@ -28,6 +28,8 @@ import { useSwipeable } from 'react-swipeable'
 import { DishSkeleton } from './LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
 import { triggerHaptic } from '@/utils/haptics'
+import { handleError, createErrorContext } from '@/utils/errorHandler'
+import * as Sentry from '@sentry/nextjs'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -57,7 +59,19 @@ export function Dashboard() {
   const deletingDishesRef = useRef<Set<string>>(new Set())
   const recentlyAddedDishesRef = useRef<Set<string>>(new Set())
   
-  const refreshDishes = async () => {
+  const checkHasPartner = useCallback(async () => {
+      if (!isMountedRef.current) return
+      try {
+        const hasPartnerResult = await hasPartner()
+        if (isMountedRef.current) {
+          setHasPartnerUser(hasPartnerResult)
+        }
+      } catch (error) {
+        console.error('Failed to check partner:', error)
+      }
+  }, [])
+
+  const refreshDishes = useCallback(async () => {
     if (!isMountedRef.current) return
     setIsLoadingDishes(true)
     try {
@@ -68,33 +82,40 @@ export function Dashboard() {
         // Also check for partner when refreshing dishes
         await checkHasPartner()
       }
+    } catch (error) {
+      console.error('Failed to refresh dishes:', error)
+      if (isMountedRef.current) {
+        showToast.error('Failed to load dishes')
+      }
     } finally {
       if (isMountedRef.current) {
         setIsLoadingDishes(false)
       }
     }
-  }
+  }, [checkHasPartner])
 
-  const loadInviteCode = async () => {
-      const code = await getInviteCode()
-      setInviteCode(code)
-  }
-
-  const loadManualIngredients = async () => {
-      if (!isMountedRef.current) return
-      const data = await getManualIngredients()
-      if (isMountedRef.current) {
-        setManualIngredients(data)
+  const loadInviteCode = useCallback(async () => {
+      try {
+        const code = await getInviteCode()
+        if (isMountedRef.current) {
+          setInviteCode(code)
+        }
+      } catch (error) {
+        console.error('Failed to load invite code:', error)
       }
-  }
+  }, [])
 
-  const checkHasPartner = async () => {
+  const loadManualIngredients = useCallback(async () => {
       if (!isMountedRef.current) return
-      const hasPartnerResult = await hasPartner()
-      if (isMountedRef.current) {
-        setHasPartnerUser(hasPartnerResult)
+      try {
+        const data = await getManualIngredients()
+        if (isMountedRef.current) {
+          setManualIngredients(data)
+        }
+      } catch (error) {
+        console.error('Failed to load manual ingredients:', error)
       }
-  }
+  }, [])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -108,12 +129,23 @@ export function Dashboard() {
   useEffect(() => {
     if (!coupleId) return // Wait for coupleId to be available
     
-    if (isMountedRef.current) {
-      refreshDishes()
-      loadInviteCode()
-      loadManualIngredients()
-      checkHasPartner()
+    let cancelled = false
+    
+    const loadData = async () => {
+      if (!isMountedRef.current || cancelled) return
+      try {
+        await Promise.all([
+          refreshDishes(),
+          loadInviteCode(),
+          loadManualIngredients(),
+          checkHasPartner()
+        ])
+      } catch (error) {
+        console.error('Failed to load initial data:', error)
+      }
     }
+    
+    loadData()
     
     // Supabase Realtime subscription with filtering
     const supabase = createClient()
@@ -351,13 +383,13 @@ export function Dashboard() {
 
     return () => {
         console.log('🔌 Cleaning up Realtime subscription')
-        isMountedRef.current = false
+        cancelled = true
         if (channelRef.current) {
           supabase.removeChannel(channelRef.current)
           channelRef.current = null
         }
     }
-  }, [coupleId])
+  }, [coupleId, refreshDishes, loadInviteCode, loadManualIngredients, checkHasPartner])
 
   const handleToggleDish = async (id: string, currentStatus: string) => {
     if (!isMountedRef.current) return
@@ -511,8 +543,19 @@ export function Dashboard() {
                   console.log('Deleted invalid dish:', dish.id)
                 } catch (deleteErr) {
                   console.error('Failed to delete invalid dish:', deleteErr)
+                  handleError(deleteErr as Error, createErrorContext('handleConfirmAddIdea', {
+                    type: 'DATABASE_ERROR',
+                    userId: undefined,
+                    metadata: { dishId: dish.id, action: 'deleteInvalidDish' },
+                  }))
                 }
               }
+            } else {
+              handleError(err as Error, createErrorContext('handleConfirmAddIdea', {
+                type: 'AI_ERROR',
+                userId: undefined,
+                metadata: { dishId: dish.id, dishName: name, lang },
+              }))
             }
           })
           
@@ -520,12 +563,17 @@ export function Dashboard() {
             setTab('plan')
             showToast.success(t.addSuccess || 'Dish added successfully')
           }
-      } catch (e: any) {
-          console.error('Failed to add dish:', e)
+      } catch (error: any) {
+          console.error('Failed to add dish:', error)
+          handleError(error, createErrorContext('handleConfirmAddIdea', {
+            type: 'DATABASE_ERROR',
+            userId: undefined,
+            metadata: { dishName: name, day },
+          }))
           // Show specific error message if validation failed
-          const errorMessage = e.message?.includes('valid dish name') 
+          const errorMessage = error?.message?.includes('valid dish name') 
             ? (t.invalidDishName || 'Please enter a valid dish name (food-related only)')
-            : (t.failedAdd || 'Failed to add dish')
+            : (error?.message || t.failedAdd || 'Failed to add dish')
           showToast.error(errorMessage)
       }
   }
