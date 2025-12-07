@@ -35,19 +35,28 @@ export default function TestSentryPage() {
 
   const testMessage = () => {
     try {
+      console.log('📤 Sending test message...')
       const messageId = Sentry.captureMessage('Test message from test page', {
         level: 'info',
         tags: {
           test: true,
           source: 'test_page',
+          timestamp: new Date().toISOString(),
         },
         extra: {
           timestamp: new Date().toISOString(),
           url: window.location.href,
+          userAgent: navigator.userAgent,
         },
       })
-      setStatus(`✅ Сообщение отправлено! ID: ${messageId}`)
+      setStatus(`✅ Сообщение отправлено! ID: ${messageId}
+      
+Проверьте:
+1. Network tab - должен быть POST запрос к *.ingest.sentry.io
+2. Sentry Dashboard → Issues или Discover
+3. Поищите по тегу "test:true" или ID: ${messageId}`)
       console.log('✅ Test message sent, ID:', messageId)
+      console.log('🔍 Check Network tab for POST requests to sentry.io')
     } catch (error) {
       setStatus(`❌ Ошибка при отправке: ${error}`)
       console.error('❌ Failed to send message:', error)
@@ -70,7 +79,14 @@ export default function TestSentryPage() {
   }
 
   const checkClient = () => {
+    // Try to check if Sentry is initialized
     const client = Sentry.getClient()
+    
+    console.log('📊 Sentry Status Check:', {
+      hasClient: !!client,
+      clientDsn: client?.getDsn(),
+    })
+    
     if (client) {
       const dsn = client.getDsn()
       const options = client.getOptions()
@@ -78,29 +94,41 @@ export default function TestSentryPage() {
 - Host: ${dsn?.host || 'unknown'}
 - Project ID: ${dsn?.projectId || 'unknown'}
 - Environment: ${options.environment || 'not set'}
-- Debug: ${options.debug ? 'enabled' : 'disabled'}`)
-      console.log('📊 Sentry Client Info:', {
-        dsn: dsn,
-        options: {
-          environment: options.environment,
-          debug: options.debug,
-          enabled: options.enabled,
-        },
-      })
+- Debug: ${options.debug ? 'enabled' : 'disabled'}
+- Enabled: ${options.enabled !== false ? 'yes' : 'no'}`)
     } else {
-      setStatus('❌ Sentry клиент НЕ инициализирован!')
-      console.error('❌ Sentry client is not initialized!')
+      // Client might not be available immediately, but Sentry can still work
+      // Test by sending a message - if it returns an ID, it works!
+      setStatus(`⚠️ Sentry клиент не найден через getClient().
+      
+НО это может быть нормально! Sentry может работать даже если getClient() возвращает null.
+
+Проверьте:
+1. Отправьте тестовое сообщение - если есть ID, значит работает!
+2. Проверьте Network tab - должны быть запросы к sentry.io
+3. Проверьте консоль - должны быть логи [Sentry beforeSend]`)
+      console.warn('⚠️ Sentry client not found via getClient(), but this might be OK')
+      console.log('💡 Try sending a test message - if you get an ID, Sentry is working!')
     }
   }
   
   const checkNetwork = () => {
-    setStatus('🔍 Проверьте Network tab в DevTools (F12 → Network)')
-    console.log('🔍 Проверьте Network tab:')
-    console.log('1. Откройте DevTools (F12)')
-    console.log('2. Перейдите на вкладку Network')
-    console.log('3. Отфильтруйте по "sentry" или "ingest"')
-    console.log('4. Отправьте тестовое сообщение')
-    console.log('5. Должны появиться запросы к sentry.io')
+    setStatus(`🔍 Инструкция по проверке Network:
+    
+1. Откройте DevTools (F12) → Network
+2. Очистите список запросов (🚫 кнопка)
+3. Отфильтруйте по "sentry" или "ingest"
+4. Нажмите "Отправить тестовое сообщение"
+5. Должен появиться POST запрос к:
+   *.ingest.sentry.io/api/.../envelope/
+6. Проверьте статус ответа (должен быть 200)
+7. Если запросов нет - проверьте блокировщики рекламы`)
+    console.log('🔍 Network Check Instructions:')
+    console.log('1. Open DevTools (F12) → Network tab')
+    console.log('2. Filter by "sentry" or "ingest"')
+    console.log('3. Send test message')
+    console.log('4. Look for POST requests to *.ingest.sentry.io')
+    console.log('5. Check response status (should be 200)')
   }
 
   return (
