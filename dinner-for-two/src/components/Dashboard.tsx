@@ -32,6 +32,8 @@ export function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [showDaySelector, setShowDaySelector] = useState(false)
   const [pendingIdea, setPendingIdea] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'alphabetical' | 'category' | 'amount'>('category')
   const channelRef = useRef<any>(null)
   
   const refreshDishes = async () => {
