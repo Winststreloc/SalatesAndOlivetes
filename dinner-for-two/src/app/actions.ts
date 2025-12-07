@@ -253,9 +253,23 @@ export async function toggleIngredientsPurchased(ingredientIds: string[], isPurc
    }
 
    const supabase = await createServerSideClient()
-   const { error } = await supabase.from('ingredients').update({ is_purchased: isPurchased }).in('id', ingredientIds)
    
-   if (error) throw new Error(error.message)
+   // Try to update dish ingredients first
+   const { error: dishError } = await supabase
+     .from('ingredients')
+     .update({ is_purchased: isPurchased })
+     .in('id', ingredientIds)
+   
+   // If no dish ingredients found, try manual ingredients
+   if (dishError) {
+     const { error: manualError } = await supabase
+       .from('manual_ingredients')
+       .update({ is_purchased: isPurchased })
+       .in('id', ingredientIds)
+       .eq('couple_id', user.couple_id)
+     
+     if (manualError) throw new Error(manualError.message)
+   }
    
    revalidatePath('/')
 }
@@ -501,6 +515,132 @@ export async function deleteWeeklyPlan(planId: string) {
     if (error) throw new Error(error.message)
     revalidatePath('/')
     return { success: true }
+}
+
+// Manual Ingredients Management
+
+export async function addManualIngredient(name: string, amount?: string, unit?: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const { data, error } = await supabase
+        .from('manual_ingredients')
+        .insert({
+            couple_id: user.couple_id,
+            name: name.trim(),
+            amount: amount || '',
+            unit: unit || '',
+            is_purchased: false
+        })
+        .select()
+        .single()
+    
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+    return data
+}
+
+export async function updateManualIngredient(ingredientId: string, name?: string, amount?: string, unit?: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const updates: any = {}
+    if (name !== undefined) updates.name = name.trim()
+    if (amount !== undefined) updates.amount = amount
+    if (unit !== undefined) updates.unit = unit
+    
+    const { error } = await supabase
+        .from('manual_ingredients')
+        .update(updates)
+        .eq('id', ingredientId)
+        .eq('couple_id', user.couple_id)
+    
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function deleteManualIngredient(ingredientId: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const { error } = await supabase
+        .from('manual_ingredients')
+        .delete()
+        .eq('id', ingredientId)
+        .eq('couple_id', user.couple_id)
+    
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function deleteIngredient(ingredientId: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const { error } = await supabase
+        .from('ingredients')
+        .delete()
+        .eq('id', ingredientId)
+    
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function updateIngredient(ingredientId: string, name?: string, amount?: string, unit?: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const updates: any = {}
+    if (name !== undefined) updates.name = name.trim()
+    if (amount !== undefined) updates.amount = amount
+    if (unit !== undefined) updates.unit = unit
+    
+    const { error } = await supabase
+        .from('ingredients')
+        .update(updates)
+        .eq('id', ingredientId)
+    
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function getManualIngredients() {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) return []
+    
+    const supabase = await createServerSideClient()
+    
+    const { data } = await supabase
+        .from('manual_ingredients')
+        .select('*')
+        .eq('couple_id', user.couple_id)
+        .order('created_at', { ascending: false })
+    
+    return data || []
 }
 
 // Logout is now handled via API route /api/auth/logout

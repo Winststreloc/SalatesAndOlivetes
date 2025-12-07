@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan } from '@/app/actions'
+import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
 import { RecipeView } from './RecipeView'
 import { HistoryView } from './HistoryView'
+import { IngredientForm } from './IngredientForm'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -15,7 +16,7 @@ import { Select } from '@/components/ui/select'
 import { useLang } from './LanguageProvider'
 import { useAuth } from './AuthProvider'
 import { useTheme } from './ThemeProvider'
-import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff, Search, History, Moon, Sun, Download } from 'lucide-react'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff, Search, History, Moon, Sun, Download, Edit2, X } from 'lucide-react'
 import { groupByCategory, IngredientCategory, CategorizedIngredient } from '@/utils/ingredientCategories'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
@@ -36,6 +37,9 @@ export function Dashboard() {
   const [pendingIdea, setPendingIdea] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'alphabetical' | 'category' | 'amount'>('category')
+  const [manualIngredients, setManualIngredients] = useState<any[]>([])
+  const [editingIngredient, setEditingIngredient] = useState<{ id: string, type: 'dish' | 'manual', name: string, amount: string, unit: string } | null>(null)
+  const [showAddIngredient, setShowAddIngredient] = useState(false)
   const channelRef = useRef<any>(null)
   
   const refreshDishes = async () => {
@@ -49,11 +53,17 @@ export function Dashboard() {
       setInviteCode(code)
   }
 
+  const loadManualIngredients = async () => {
+      const data = await getManualIngredients()
+      setManualIngredients(data)
+  }
+
   useEffect(() => {
     if (!coupleId) return // Wait for coupleId to be available
     
     refreshDishes()
     loadInviteCode()
+    loadManualIngredients()
     
     // Supabase Realtime subscription with filtering
     const supabase = createClient()
@@ -220,8 +230,19 @@ export function Dashboard() {
 
   const shoppingList = useMemo(() => {
     const selectedDishes = dishes.filter(d => d.status === 'selected')
-    const map = new Map<string, { name: string, amount: number, unit: string, ids: string[], is_purchased: boolean }>()
+    const map = new Map<string, { 
+      name: string, 
+      amount: number, 
+      unit: string, 
+      ids: string[], 
+      is_purchased: boolean,
+      dishIds: string[],
+      dishNames: string[],
+      isManual: boolean,
+      manualId?: string
+    }>()
     
+    // Add ingredients from dishes
     selectedDishes.forEach(dish => {
       dish.ingredients.forEach((ing: any) => {
         // Improved deduplication
@@ -240,6 +261,10 @@ export function Dashboard() {
         if (existing) {
           existing.amount += amount
           existing.ids.push(ing.id)
+          if (!existing.dishIds.includes(dish.id)) {
+            existing.dishIds.push(dish.id)
+            existing.dishNames.push(dish.name)
+          }
           if (!ing.is_purchased) existing.is_purchased = false 
         } else {
           map.set(key, { 
@@ -247,10 +272,41 @@ export function Dashboard() {
               amount, 
               unit: ing.unit, 
               ids: [ing.id],
-              is_purchased: ing.is_purchased 
+              is_purchased: ing.is_purchased,
+              dishIds: [dish.id],
+              dishNames: [dish.name],
+              isManual: false
           })
         }
       })
+    })
+    
+    // Add manual ingredients
+    manualIngredients.forEach((ing: any) => {
+      const cleanName = ing.name.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim().toLowerCase()
+      const cleanUnit = ing.unit?.trim().toLowerCase() || ''
+      const key = `${cleanName}-${cleanUnit}`
+      
+      const existing = map.get(key)
+      let amount = parseFloat(String(ing.amount).replace(',', '.')) || 0
+      
+      if (existing) {
+        // Merge with existing ingredient
+        existing.amount += amount
+        if (ing.is_purchased) existing.is_purchased = true
+      } else {
+        map.set(key, {
+          name: ing.name.trim(),
+          amount,
+          unit: ing.unit || '',
+          ids: [],
+          is_purchased: ing.is_purchased,
+          dishIds: [],
+          dishNames: [],
+          isManual: true,
+          manualId: ing.id
+        })
+      }
     })
     
     let items = Array.from(map.values())
@@ -270,7 +326,7 @@ export function Dashboard() {
     // category sorting is handled by groupByCategory
     
     return items
-  }, [dishes, searchQuery, sortBy])
+  }, [dishes, manualIngredients, searchQuery, sortBy])
   
   const categorizedList = useMemo(() => {
     return groupByCategory(shoppingList)
@@ -362,17 +418,92 @@ export function Dashboard() {
   const handleToggleIngredient = async (item: any) => {
     try {
       const newStatus = !item.is_purchased
-      setDishes(prev => prev.map(d => ({
-          ...d,
-          ingredients: d.ingredients.map((ing: any) => 
-              item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
-          )
-      })))
-      await toggleIngredientsPurchased(item.ids, newStatus)
+      const idsToUpdate: string[] = []
+      
+      // Collect all IDs to update
+      if (item.ids && item.ids.length > 0) {
+        idsToUpdate.push(...item.ids)
+        // Update dish ingredients in local state
+        setDishes(prev => prev.map(d => ({
+            ...d,
+            ingredients: d.ingredients.map((ing: any) => 
+                item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
+            )
+        })))
+      }
+      
+      // Update manual ingredients
+      if (item.manualId) {
+        idsToUpdate.push(item.manualId)
+        setManualIngredients(prev => prev.map(ing => 
+          ing.id === item.manualId ? { ...ing, is_purchased: newStatus } : ing
+        ))
+      }
+      
+      if (idsToUpdate.length > 0) {
+        await toggleIngredientsPurchased(idsToUpdate, newStatus)
+      }
     } catch (e: any) {
       console.error('Failed to toggle ingredient:', e)
-      // Revert optimistic update
       refreshDishes()
+      loadManualIngredients()
+      alert(e.message || 'Failed to update ingredient')
+    }
+  }
+
+  const handleDeleteIngredient = async (item: any) => {
+    if (!confirm('Are you sure you want to delete this ingredient?')) return
+    
+    try {
+      // Delete from dish ingredients
+      if (item.ids.length > 0) {
+        for (const id of item.ids) {
+          await deleteIngredient(id)
+        }
+        await refreshDishes()
+      }
+      
+      // Delete manual ingredient
+      if (item.manualId) {
+        await deleteManualIngredient(item.manualId)
+        await loadManualIngredients()
+      }
+    } catch (e: any) {
+      console.error('Failed to delete ingredient:', e)
+      alert(e.message || 'Failed to delete ingredient')
+    }
+  }
+
+  const handleAddManualIngredient = async (name: string, amount: string, unit: string) => {
+    try {
+      await addManualIngredient(name, amount, unit)
+      await loadManualIngredients()
+      setShowAddIngredient(false)
+    } catch (e: any) {
+      console.error('Failed to add ingredient:', e)
+      alert(e.message || 'Failed to add ingredient')
+    }
+  }
+
+  const handleUpdateIngredient = async (item: any, name: string, amount: string, unit: string) => {
+    try {
+      // Update dish ingredients
+      if (item.ids.length > 0) {
+        for (const id of item.ids) {
+          await updateIngredient(id, name, amount, unit)
+        }
+        await refreshDishes()
+      }
+      
+      // Update manual ingredient
+      if (item.manualId) {
+        await updateManualIngredient(item.manualId, name, amount, unit)
+        await loadManualIngredients()
+      }
+      
+      setEditingIngredient(null)
+    } catch (e: any) {
+      console.error('Failed to update ingredient:', e)
       alert(e.message || 'Failed to update ingredient')
     }
   }
@@ -684,6 +815,21 @@ export function Dashboard() {
                      </Select>
                    </div>
                    
+                   {/* Add Ingredient Button */}
+                   <div className="mb-4">
+                     {showAddIngredient ? (
+                       <IngredientForm
+                         onSubmit={handleAddManualIngredient}
+                         onCancel={() => setShowAddIngredient(false)}
+                       />
+                     ) : (
+                       <Button variant="outline" size="sm" onClick={() => setShowAddIngredient(true)} className="w-full">
+                         <Plus className="w-4 h-4 mr-2" />
+                         {t.addIngredient}
+                       </Button>
+                     )}
+                   </div>
+                   
                    {/* Export Buttons */}
                    <div className="flex gap-2 mb-4">
                      <Button variant="outline" size="sm" onClick={handleExportText} className="flex-1">
@@ -730,18 +876,78 @@ export function Dashboard() {
                    ) : (
                      /* Flat list for alphabetical/amount sorting */
                      shoppingList.map((item, idx) => (
-                       <div key={idx} className="flex items-center space-x-3 p-3 bg-card rounded shadow-sm border border-border">
-                         <Checkbox 
-                           id={`ing-${idx}`} 
-                           checked={item.is_purchased}
-                           onCheckedChange={() => handleToggleIngredient(item)}
-                         />
-                         <label htmlFor={`ing-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                           <span className="font-medium">{item.name}</span>
-                           <span className="text-muted-foreground ml-2">
-                             {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
-                           </span>
-                         </label>
+                       <div key={idx} className="p-3 bg-card rounded shadow-sm border border-border">
+                         {editingIngredient?.id === String(idx) ? (
+                           <IngredientForm
+                             initialName={item.name}
+                             initialAmount={String(item.amount)}
+                             initialUnit={item.unit}
+                             onSubmit={(name, amount, unit) => handleUpdateIngredient(item, name, amount, unit)}
+                             onCancel={() => setEditingIngredient(null)}
+                           />
+                         ) : (
+                           <div className="flex items-start space-x-3">
+                             <Checkbox 
+                               id={`ing-${idx}`} 
+                               checked={item.is_purchased}
+                               onCheckedChange={() => handleToggleIngredient(item)}
+                               className="mt-1"
+                             />
+                             <div className="flex-1 min-w-0">
+                               <div className="flex items-center justify-between">
+                                 <label htmlFor={`ing-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                   <div className="flex items-center gap-2 flex-wrap">
+                                     <span className="font-medium">{item.name}</span>
+                                     {item.isManual && (
+                                       <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">{t.manualIngredient}</span>
+                                     )}
+                                     <span className="text-muted-foreground">
+                                       {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
+                                     </span>
+                                   </div>
+                                 </label>
+                                 <div className="flex gap-1 ml-2">
+                                   <button
+                                     onClick={() => setEditingIngredient({ id: String(idx), type: item.isManual ? 'manual' : 'dish', name: item.name, amount: String(item.amount), unit: item.unit })}
+                                     className="text-muted-foreground hover:text-blue-500 p-1"
+                                     title={t.editIngredient}
+                                   >
+                                     <Edit2 className="w-4 h-4" />
+                                   </button>
+                                   <button
+                                     onClick={() => handleDeleteIngredient(item)}
+                                     className="text-muted-foreground hover:text-red-500 p-1"
+                                     title={t.deleteIngredient}
+                                   >
+                                     <Trash2 className="w-4 h-4" />
+                                   </button>
+                                 </div>
+                               </div>
+                                       {item.dishNames && item.dishNames.length > 0 && (
+                                         <div className="mt-1 text-xs text-muted-foreground">
+                                           <span className="font-medium">{t.forDishes}: </span>
+                                           {item.dishNames.map((dishName: string, i: number) => {
+                                             const dish = dishes.find(d => d.name === dishName && d.status === 'selected' && item.dishIds.includes(d.id))
+                                             return dish ? (
+                                               <button
+                                                 key={i}
+                                                 onClick={() => {
+                                                   setSelectedDish(dish)
+                                                   setTab('plan')
+                                                 }}
+                                                 className="text-blue-500 hover:underline mr-1"
+                                               >
+                                                 {dishName}{i < item.dishNames.length - 1 ? ', ' : ''}
+                                               </button>
+                                             ) : (
+                                               <span key={i} className="mr-1">{dishName}{i < item.dishNames.length - 1 ? ', ' : ''}</span>
+                                             )
+                                           })}
+                                         </div>
+                                       )}
+                             </div>
+                           </div>
+                         )}
                        </div>
                      ))
                    )}

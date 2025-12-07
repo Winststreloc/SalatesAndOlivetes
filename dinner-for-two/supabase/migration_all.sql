@@ -46,9 +46,29 @@ create table if not exists weekly_plans (
 -- Индекс для быстрого поиска
 create index if not exists idx_weekly_plans_couple_date on weekly_plans(couple_id, week_start_date desc);
 
+-- 3. Таблица для ручных ингредиентов (добавленных пользователем)
+create table if not exists manual_ingredients (
+  id uuid primary key default uuid_generate_v4(),
+  couple_id uuid references couples(id) on delete cascade not null,
+  name text not null,
+  amount text,
+  unit text,
+  is_purchased boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Индекс для быстрого поиска
+create index if not exists idx_manual_ingredients_couple on manual_ingredients(couple_id);
+
+-- Триггер для обновления updated_at
+create trigger update_manual_ingredients_updated_at before update on manual_ingredients
+    for each row execute function update_updated_at_column();
+
 -- Включить RLS для новых таблиц
 alter table dish_cache enable row level security;
 alter table weekly_plans enable row level security;
+alter table manual_ingredients enable row level security;
 
 -- Политики RLS для dish_cache (публичный доступ для чтения, так как это кэш)
 create policy "Anyone can read dish cache" on dish_cache for select using (true);
@@ -67,4 +87,7 @@ create policy "Users can update their couple's weekly plans" on weekly_plans for
 
 create policy "Users can delete their couple's weekly plans" on weekly_plans for delete 
   using (true); -- Временно разрешаем всем
+
+-- Политики RLS для manual_ingredients
+create policy "Users can manage their couple's manual ingredients" on manual_ingredients for all using (true);
 
