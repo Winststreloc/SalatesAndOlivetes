@@ -479,20 +479,60 @@ export function Dashboard() {
       items = items.filter(item => item.name.toLowerCase().includes(query))
     }
     
-    // Apply sorting
-    if (sortBy === 'alphabetical') {
-      items.sort((a, b) => a.name.localeCompare(b.name))
-    } else if (sortBy === 'amount') {
-      items.sort((a, b) => b.amount - a.amount)
-    }
-    // category sorting is handled by groupByCategory
+    // Separate items by purchase status - unpurchased first
+    const unpurchased = items.filter(item => !item.is_purchased)
+    const purchased = items.filter(item => item.is_purchased)
     
-    return items
+    // Apply sorting within each group
+    const sortItems = (itemsToSort: typeof items) => {
+      if (sortBy === 'alphabetical') {
+        return [...itemsToSort].sort((a, b) => a.name.localeCompare(b.name))
+      } else if (sortBy === 'amount') {
+        return [...itemsToSort].sort((a, b) => b.amount - a.amount)
+      }
+      // category sorting is handled by groupByCategory
+      return itemsToSort
+    }
+    
+    // Always return unpurchased first, then purchased
+    return [...sortItems(unpurchased), ...sortItems(purchased)]
   }, [dishes, manualIngredients, searchQuery, sortBy])
   
   const categorizedList = useMemo(() => {
-    return groupByCategory(shoppingList)
-  }, [shoppingList])
+    const categorized = groupByCategory(shoppingList)
+    // Within each category, separate by purchase status and sort unpurchased first
+    const result: Record<IngredientCategory, CategorizedIngredient[]> = {
+      vegetables: [],
+      fruits: [],
+      meat: [],
+      dairy: [],
+      bakery: [],
+      pantry: [],
+      spices: [],
+      other: []
+    }
+    
+    Object.keys(categorized).forEach(cat => {
+      const category = cat as IngredientCategory
+      const items = categorized[category]
+      const unpurchased = items.filter(item => !item.is_purchased)
+      const purchased = items.filter(item => item.is_purchased)
+      
+      // Apply sorting within each group
+      if (sortBy === 'alphabetical') {
+        unpurchased.sort((a, b) => a.name.localeCompare(b.name))
+        purchased.sort((a, b) => a.name.localeCompare(b.name))
+      } else if (sortBy === 'amount') {
+        unpurchased.sort((a, b) => b.amount - a.amount)
+        purchased.sort((a, b) => b.amount - a.amount)
+      }
+      
+      // Always unpurchased first
+      result[category] = [...unpurchased, ...purchased]
+    })
+    
+    return result
+  }, [shoppingList, sortBy])
   
   const categoryLabels: Record<IngredientCategory, string> = {
     vegetables: t.categoryVegetables,
@@ -1137,14 +1177,25 @@ export function Dashboard() {
                        const items = categorizedList[category]
                        if (items.length === 0) return null
                        
+                       // Separate by purchase status
+                       const unpurchased = items.filter(item => !item.is_purchased)
+                       const purchased = items.filter(item => item.is_purchased)
+                       
                        return (
                          <div key={category} className="mb-4">
                            <h3 className="font-semibold text-sm text-foreground mb-2 px-2">
                              {categoryLabels[category]}
                            </h3>
-                           <div className="space-y-2">
-                             {items.map((item, idx) => (
-                               <div key={`${category}-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border">
+                           
+                           {/* Unpurchased items */}
+                           {unpurchased.length > 0 && (
+                             <div className="mb-3">
+                               <h4 className="text-xs font-medium text-foreground mb-1 px-2 opacity-70">
+                                 {t.toBuy}
+                               </h4>
+                               <div className="space-y-2">
+                                 {unpurchased.map((item, idx) => (
+                                   <div key={`${category}-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border">
                                  {editingIngredient?.id === `${category}-${idx}` ? (
                                    <IngredientForm
                                      initialName={item.name}
@@ -1216,15 +1267,116 @@ export function Dashboard() {
                                      </div>
                                    </div>
                                  )}
+                                   </div>
+                                 ))}
                                </div>
-                             ))}
-                           </div>
+                             </div>
+                           )}
+                           
+                           {/* Purchased items */}
+                           {purchased.length > 0 && (
+                             <div className="mb-3">
+                               <h4 className="text-xs font-medium text-muted-foreground mb-1 px-2 opacity-70">
+                                 {t.purchased}
+                               </h4>
+                               <div className="space-y-2">
+                                 {purchased.map((item, idx) => (
+                                   <div key={`${category}-purchased-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border opacity-75">
+                                     {editingIngredient?.id === `${category}-purchased-${idx}` ? (
+                                       <IngredientForm
+                                         initialName={item.name}
+                                         initialAmount={String(item.amount)}
+                                         initialUnit={item.unit}
+                                         onSubmit={(name, amount, unit) => handleUpdateIngredient(item, name, amount, unit)}
+                                         onCancel={() => setEditingIngredient(null)}
+                                       />
+                                     ) : (
+                                       <div className="flex items-start space-x-3">
+                                         <Checkbox 
+                                           id={`ing-${category}-purchased-${idx}`} 
+                                           checked={item.is_purchased}
+                                           onCheckedChange={() => handleToggleIngredient(item)}
+                                           className="mt-1"
+                                         />
+                                         <div className="flex-1 min-w-0">
+                                           <div className="flex items-center justify-between">
+                                             <label htmlFor={`ing-${category}-purchased-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                               <div className="flex items-center gap-2 flex-wrap">
+                                                 <span className="font-medium">{item.name}</span>
+                                                 {item.isManual && (
+                                                   <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">{t.manualIngredient}</span>
+                                                 )}
+                                                 <span className="text-muted-foreground">
+                                                   {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
+                                                 </span>
+                                               </div>
+                                             </label>
+                                             <div className="flex gap-1 ml-2">
+                                               <button
+                                                 onClick={() => setEditingIngredient({ id: `${category}-purchased-${idx}`, type: item.isManual ? 'manual' : 'dish', name: item.name, amount: String(item.amount), unit: item.unit })}
+                                                 className="text-muted-foreground hover:text-blue-500 p-1"
+                                                 title={t.editIngredient}
+                                               >
+                                                 <Edit2 className="w-4 h-4" />
+                                               </button>
+                                               <button
+                                                 onClick={() => handleDeleteIngredient(item)}
+                                                 className="text-muted-foreground hover:text-red-500 p-1"
+                                                 title={t.deleteIngredient}
+                                               >
+                                                 <Trash2 className="w-4 h-4" />
+                                               </button>
+                                             </div>
+                                           </div>
+                                           {item.dishNames && item.dishNames.length > 0 && (
+                                             <div className="mt-1 text-xs text-muted-foreground">
+                                               <span className="font-medium">{t.forDishes}: </span>
+                                               {item.dishNames.map((dishName: string, i: number) => {
+                                                 const dish = dishes.find(d => d.name === dishName && d.status === 'selected' && (item.dishIds?.includes(d.id) ?? false))
+                                                 return dish ? (
+                                                   <button
+                                                     key={i}
+                                                     onClick={() => {
+                                                       setSelectedDish(dish)
+                                                       setTab('plan')
+                                                     }}
+                                                     className="text-blue-500 hover:underline mr-1"
+                                                   >
+                                                     {dishName}{i < (item.dishNames?.length ?? 0) - 1 ? ', ' : ''}
+                                                   </button>
+                                                 ) : (
+                                                   <span key={i} className="mr-1">{dishName}{i < (item.dishNames?.length ?? 0) - 1 ? ', ' : ''}</span>
+                                                 )
+                                               })}
+                                             </div>
+                                           )}
+                                         </div>
+                                       </div>
+                                     )}
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
                          </div>
                        )
                      })
                    ) : (
-                     /* Flat list for alphabetical/amount sorting */
-                     shoppingList.map((item, idx) => (
+                     /* Flat list for alphabetical/amount sorting - grouped by purchase status */
+                     (() => {
+                       const unpurchased = shoppingList.filter(item => !item.is_purchased)
+                       const purchased = shoppingList.filter(item => item.is_purchased)
+                       
+                       return (
+                         <>
+                           {/* Unpurchased items */}
+                           {unpurchased.length > 0 && (
+                             <div className="mb-4">
+                               <h3 className="font-semibold text-sm text-foreground mb-2 px-2">
+                                 {t.toBuy}
+                               </h3>
+                               <div className="space-y-2">
+                                 {unpurchased.map((item, idx) => (
                        <div key={idx} className="p-3 bg-card rounded shadow-sm border border-border">
                          {editingIngredient?.id === String(idx) ? (
                            <IngredientForm
@@ -1294,11 +1446,103 @@ export function Dashboard() {
                                            })}
                                          </div>
                                        )}
+                                     </div>
+                                   </div>
+                                 )}
+                               </div>
+                             ))}
                              </div>
                            </div>
-                         )}
-                       </div>
-                     ))
+                           )}
+                           
+                           {/* Purchased items */}
+                           {purchased.length > 0 && (
+                             <div className="mb-4">
+                               <h3 className="font-semibold text-sm text-muted-foreground mb-2 px-2 opacity-70">
+                                 {t.purchased}
+                               </h3>
+                               <div className="space-y-2">
+                                 {purchased.map((item, idx) => (
+                                   <div key={`purchased-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border opacity-75">
+                                     {editingIngredient?.id === `purchased-${idx}` ? (
+                                       <IngredientForm
+                                         initialName={item.name}
+                                         initialAmount={String(item.amount)}
+                                         initialUnit={item.unit}
+                                         onSubmit={(name, amount, unit) => handleUpdateIngredient(item, name, amount, unit)}
+                                         onCancel={() => setEditingIngredient(null)}
+                                       />
+                                     ) : (
+                                       <div className="flex items-start space-x-3">
+                                         <Checkbox 
+                                           id={`ing-purchased-${idx}`} 
+                                           checked={item.is_purchased}
+                                           onCheckedChange={() => handleToggleIngredient(item)}
+                                           className="mt-1"
+                                         />
+                                         <div className="flex-1 min-w-0">
+                                           <div className="flex items-center justify-between">
+                                             <label htmlFor={`ing-purchased-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                               <div className="flex items-center gap-2 flex-wrap">
+                                                 <span className="font-medium">{item.name}</span>
+                                                 {item.isManual && (
+                                                   <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">{t.manualIngredient}</span>
+                                                 )}
+                                                 <span className="text-muted-foreground">
+                                                   {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
+                                                 </span>
+                                               </div>
+                                             </label>
+                                             <div className="flex gap-1 ml-2">
+                                               <button
+                                                 onClick={() => setEditingIngredient({ id: `purchased-${idx}`, type: item.isManual ? 'manual' : 'dish', name: item.name, amount: String(item.amount), unit: item.unit })}
+                                                 className="text-muted-foreground hover:text-blue-500 p-2 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
+                                                 title={t.editIngredient}
+                                               >
+                                                 <Edit2 className="w-4 h-4" />
+                                               </button>
+                                               <button
+                                                 onClick={() => handleDeleteIngredient(item)}
+                                                 className="text-muted-foreground hover:text-red-500 p-2 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
+                                                 title={t.deleteIngredient}
+                                               >
+                                                 <Trash2 className="w-4 h-4" />
+                                               </button>
+                                             </div>
+                                           </div>
+                                           {item.dishNames && item.dishNames.length > 0 && (
+                                             <div className="mt-1 text-xs text-muted-foreground">
+                                               <span className="font-medium">{t.forDishes}: </span>
+                                               {item.dishNames.map((dishName: string, i: number) => {
+                                                 const dish = dishes.find(d => d.name === dishName && d.status === 'selected' && (item.dishIds?.includes(d.id) ?? false))
+                                                 return dish ? (
+                                                   <button
+                                                     key={i}
+                                                     onClick={() => {
+                                                       setSelectedDish(dish)
+                                                       setTab('plan')
+                                                     }}
+                                                     className="text-blue-500 hover:underline mr-1"
+                                                   >
+                                                     {dishName}{i < (item.dishNames?.length ?? 0) - 1 ? ', ' : ''}
+                                                   </button>
+                                                 ) : (
+                                                   <span key={i} className="mr-1">{dishName}{i < (item.dishNames?.length ?? 0) - 1 ? ', ' : ''}</span>
+                                                 )
+                                               })}
+                                             </div>
+                                           )}
+                                         </div>
+                                       </div>
+                                     )}
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </>
+                       )
+                     })()
                    )}
                  </>
                )}

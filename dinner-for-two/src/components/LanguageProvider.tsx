@@ -121,7 +121,9 @@ const translations = {
     deleteDishConfirm: "Are you sure you want to delete this dish?",
     deleteIngredientConfirm: "Are you sure you want to delete this ingredient?",
     logout: "Logout",
-    noResults: "No results found"
+    noResults: "No results found",
+    toBuy: "To Buy",
+    purchased: "Purchased"
   },
   ru: {
     startNew: "Создать пару",
@@ -191,6 +193,8 @@ const translations = {
     deleteIngredientConfirm: "Вы уверены, что хотите удалить этот продукт?",
     logout: "Выйти",
     noResults: "Ничего не найдено",
+    toBuy: "Нужно купить",
+    purchased: "Куплено",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",
