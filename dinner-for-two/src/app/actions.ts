@@ -13,12 +13,6 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
 
   const supabase = await createServerSideClient()
 
-  // Status logic: 
-  // If added to a specific day -> 'proposed' (needs approval) or 'selected'? 
-  // User asked for approval flow. So let's make it 'proposed' by default unless we want auto-approve for own dishes?
-  // Usually in couples apps: one proposes, other accepts. Or just "it's in the plan".
-  // Let's set to 'proposed' so the checkmark UI appears.
-  
   const { data: dish, error } = await supabase
     .from('dishes')
     .insert({
@@ -225,17 +219,30 @@ export async function generateIdeas() {
     const prefs = data?.preferences || {}
     const sides = prefs.sides || []
     const proteins = prefs.proteins || []
+    const veggies = prefs.veggies || []
+    const treats = prefs.treats || []
+    const cuisines = prefs.cuisines || []
     
-    if (sides.length === 0 && proteins.length === 0) return []
+    // Check if at least some preference is set
+    if ([...sides, ...proteins, ...veggies, ...treats, ...cuisines].length === 0) return []
     
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const prompt = `
-          Generate 3 dinner ideas based on these preferences:
-          Sides: ${sides.join(', ')}
-          Proteins: ${proteins.join(', ')}
+          You are a creative chef. Suggest 4 distinct dinner ideas based on these user preferences:
           
-          Vary the cooking methods (fried, boiled, baked).
+          Preferred Sides: ${sides.join(', ') || 'Any'}
+          Preferred Proteins: ${proteins.join(', ') || 'Any'}
+          Preferred Veggies: ${veggies.join(', ') || 'Any'}
+          Cuisines: ${cuisines.join(', ') || 'Any'}
+          Treats/Cheat meal desires: ${treats.join(', ')}
+          
+          Guidelines:
+          1. Mix comfort food and healthy options based on choices.
+          2. If 'Treats' are selected, include at least one option from there (e.g. homemade pizza or sushi bowl).
+          3. Use different cooking methods (oven, pan, stew).
+          4. Suggest COMPLETE dish names (e.g. "Grilled Chicken with Roasted Vegetables").
+          
           Return ONLY a JSON array of strings (dish names). Example: ["Fried Chicken with Rice", "Baked Fish with Potatoes"]
         `
         const result = await model.generateContent(prompt);
