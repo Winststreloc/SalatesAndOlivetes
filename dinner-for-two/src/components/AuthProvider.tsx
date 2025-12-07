@@ -97,7 +97,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, coupleId, isLoading, createCouple, joinCouple }}>
-      <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       {children}
     </AuthContext.Provider>
   )
