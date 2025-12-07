@@ -249,9 +249,13 @@ export function Dashboard() {
              </Button>
              <h1 className="font-semibold text-sm text-gray-700">S&O</h1>
              {isRealtimeConnected ? (
-                 <Wifi className="h-3 w-3 text-green-500" title="Realtime connected" />
+                 <span title="Realtime connected">
+                     <Wifi className="h-3 w-3 text-green-500" />
+                 </span>
              ) : (
-                 <WifiOff className="h-3 w-3 text-gray-400" title="Realtime disconnected" />
+                 <span title="Realtime disconnected">
+                     <WifiOff className="h-3 w-3 text-gray-400" />
+                 </span>
              )}
          </div>
          <div className="flex items-center space-x-1">
