@@ -6,6 +6,7 @@ import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { isValidDishName } from '@/utils/validateDishName'
 
 // Initialize Google Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
@@ -19,6 +20,13 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
   if (!user.couple_id) {
     console.error('addDish: User has no couple_id', user.telegram_id)
     throw new Error('Unauthorized: Please create or join a couple first')
+  }
+
+  // Validate dish name
+  const validation = isValidDishName(dishName)
+  if (!validation.valid) {
+    console.error('addDish: Invalid dish name', dishName, validation.reason)
+    throw new Error('Please enter a valid dish name (food-related only)')
   }
 
   const supabase = await createServerSideClient()
@@ -50,6 +58,13 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   if (!user.couple_id) {
     console.error('generateDishIngredients: User has no couple_id', user.telegram_id)
     return { success: false }
+  }
+  
+  // Validate dish name before making AI request
+  const validation = isValidDishName(dishName)
+  if (!validation.valid) {
+    console.error('generateDishIngredients: Invalid dish name', dishName, validation.reason)
+    return { success: false, error: 'Invalid dish name' }
   }
   
   const supabase = await createServerSideClient()

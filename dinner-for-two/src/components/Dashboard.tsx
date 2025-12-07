@@ -386,7 +386,11 @@ export function Dashboard() {
           }
       } catch (e: any) {
           console.error('Failed to add dish:', e)
-          showToast.error(t.failedAdd || 'Failed to add dish')
+          // Show specific error message if validation failed
+          const errorMessage = e.message?.includes('valid dish name') 
+            ? (t.invalidDishName || 'Please enter a valid dish name (food-related only)')
+            : (t.failedAdd || 'Failed to add dish')
+          showToast.error(errorMessage)
       }
   }
 
