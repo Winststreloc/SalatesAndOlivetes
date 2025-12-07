@@ -143,12 +143,30 @@ export function Dashboard() {
       const today = new Date().getDay()
       const adjustedDay = today === 0 ? 6 : today - 1 
       
-      const dish = await addDish(name, adjustedDay)
-      // Pass LANG here
-      generateDishIngredients(dish.id, dish.name, lang)
-      // refreshDishes() - Realtime will catch insert
-      setTab('plan')
-      alert(`Added "${name}" to ${t.days[adjustedDay]}`)
+      try {
+          const dish = await addDish(name, adjustedDay)
+          
+          // Optimistic update - add dish to local state immediately
+          setDishes(prev => [...prev, {
+              ...dish,
+              ingredients: [],
+              status: 'proposed'
+          }])
+          
+          // Refresh to get full data (with ingredients when they're generated)
+          setTimeout(() => refreshDishes(), 500)
+          
+          // Pass LANG here - generate ingredients asynchronously
+          generateDishIngredients(dish.id, dish.name, lang).then(() => {
+              // Refresh again after ingredients are generated
+              refreshDishes()
+          })
+          
+          setTab('plan')
+      } catch (e) {
+          console.error('Failed to add dish:', e)
+          alert(t.failedAdd || 'Failed to add dish')
+      }
   }
 
   const shoppingList = useMemo(() => {
@@ -374,8 +392,21 @@ export function Dashboard() {
                                        {addingDay === dayIndex ? (
                                            <AddDishForm 
                                               day={dayIndex} 
-                                              onAdded={() => {
+                                              onAdded={async (dish) => {
                                                   setAddingDay(null)
+                                                  
+                                                  // Optimistic update - add dish immediately to local state
+                                                  if (dish) {
+                                                      setDishes(prev => [...prev, {
+                                                          ...dish,
+                                                          ingredients: [],
+                                                          status: 'proposed'
+                                                      }])
+                                                  }
+                                                  
+                                                  // Refresh to get full data (with ingredients when generated)
+                                                  await refreshDishes()
+                                                  setTimeout(() => refreshDishes(), 1000)
                                               }} 
                                               onCancel={() => setAddingDay(null)} 
                                            />

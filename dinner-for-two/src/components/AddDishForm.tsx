@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLang } from './LanguageProvider'
 
-export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: () => void, onCancel: () => void }) {
+export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: (dish?: any) => void, onCancel: () => void }) {
   const { t, lang } = useLang()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,14 +20,17 @@ export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: 
       // 1. Fast add with day
       const dish = await addDish(name, day)
       setName('')
-      onAdded() 
       
-      // 2. Async generate with LANGUAGE
-      generateDishIngredients(dish.id, dish.name, lang).then(() => {
-          onAdded() 
+      // Pass dish to onAdded for optimistic update
+      onAdded(dish) 
+      
+      // 2. Async generate with LANGUAGE (don't wait)
+      generateDishIngredients(dish.id, dish.name, lang).catch(err => {
+        console.error('Failed to generate ingredients:', err)
       })
       
     } catch (e) {
+      console.error('Failed to add dish:', e)
       alert(t.failedAdd)
     } finally {
       setLoading(false)
