@@ -874,18 +874,78 @@ export function Dashboard() {
                            </h3>
                            <div className="space-y-2">
                              {items.map((item, idx) => (
-                               <div key={`${category}-${idx}`} className="flex items-center space-x-3 p-3 bg-card rounded shadow-sm border border-border">
-                                 <Checkbox 
-                                   id={`ing-${category}-${idx}`} 
-                                   checked={item.is_purchased}
-                                   onCheckedChange={() => handleToggleIngredient(item)}
-                                 />
-                                 <label htmlFor={`ing-${category}-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                                   <span className="font-medium">{item.name}</span>
-                                   <span className="text-muted-foreground ml-2">
-                                     {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
-                                   </span>
-                                 </label>
+                               <div key={`${category}-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border">
+                                 {editingIngredient?.id === `${category}-${idx}` ? (
+                                   <IngredientForm
+                                     initialName={item.name}
+                                     initialAmount={String(item.amount)}
+                                     initialUnit={item.unit}
+                                     onSubmit={(name, amount, unit) => handleUpdateIngredient(item, name, amount, unit)}
+                                     onCancel={() => setEditingIngredient(null)}
+                                   />
+                                 ) : (
+                                   <div className="flex items-start space-x-3">
+                                     <Checkbox 
+                                       id={`ing-${category}-${idx}`} 
+                                       checked={item.is_purchased}
+                                       onCheckedChange={() => handleToggleIngredient(item)}
+                                       className="mt-1"
+                                     />
+                                     <div className="flex-1 min-w-0">
+                                       <div className="flex items-center justify-between">
+                                         <label htmlFor={`ing-${category}-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                           <div className="flex items-center gap-2 flex-wrap">
+                                             <span className="font-medium">{item.name}</span>
+                                             {item.isManual && (
+                                               <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">{t.manualIngredient}</span>
+                                             )}
+                                             <span className="text-muted-foreground">
+                                               {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
+                                             </span>
+                                           </div>
+                                         </label>
+                                         <div className="flex gap-1 ml-2">
+                                           <button
+                                             onClick={() => setEditingIngredient({ id: `${category}-${idx}`, type: item.isManual ? 'manual' : 'dish', name: item.name, amount: String(item.amount), unit: item.unit })}
+                                             className="text-muted-foreground hover:text-blue-500 p-1"
+                                             title={t.editIngredient}
+                                           >
+                                             <Edit2 className="w-4 h-4" />
+                                           </button>
+                                           <button
+                                             onClick={() => handleDeleteIngredient(item)}
+                                             className="text-muted-foreground hover:text-red-500 p-1"
+                                             title={t.deleteIngredient}
+                                           >
+                                             <Trash2 className="w-4 h-4" />
+                                           </button>
+                                         </div>
+                                       </div>
+                                       {item.dishNames && item.dishNames.length > 0 && (
+                                         <div className="mt-1 text-xs text-muted-foreground">
+                                           <span className="font-medium">{t.forDishes}: </span>
+                                           {item.dishNames.map((dishName: string, i: number) => {
+                                             const dish = dishes.find(d => d.name === dishName && d.status === 'selected' && (item.dishIds?.includes(d.id) ?? false))
+                                             return dish ? (
+                                               <button
+                                                 key={i}
+                                                 onClick={() => {
+                                                   setSelectedDish(dish)
+                                                   setTab('plan')
+                                                 }}
+                                                 className="text-blue-500 hover:underline mr-1"
+                                               >
+                                                 {dishName}{i < (item.dishNames?.length ?? 0) - 1 ? ', ' : ''}
+                                               </button>
+                                             ) : (
+                                               <span key={i} className="mr-1">{dishName}{i < (item.dishNames?.length ?? 0) - 1 ? ', ' : ''}</span>
+                                             )
+                                           })}
+                                         </div>
+                                       )}
+                                     </div>
+                                   </div>
+                                 )}
                                </div>
                              ))}
                            </div>

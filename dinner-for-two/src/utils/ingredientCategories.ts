@@ -17,6 +17,10 @@ export interface CategorizedIngredient {
   ids: string[]
   is_purchased: boolean
   category: IngredientCategory
+  dishIds?: string[]
+  dishNames?: string[]
+  isManual?: boolean
+  manualId?: string
 }
 
 // Keywords for categorization (case-insensitive matching)
