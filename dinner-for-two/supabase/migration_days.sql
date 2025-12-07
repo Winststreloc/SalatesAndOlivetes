@@ -5,3 +5,4 @@
 alter table dishes 
 add column if not exists day_of_week integer check (day_of_week >= 0 and day_of_week <= 6);
 
+
