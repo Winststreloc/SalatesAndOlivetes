@@ -1,13 +1,13 @@
 'use server'
 
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Use OpenAI fallback or Google Gemini
+// But here we switch completely to Gemini as requested
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
 
 export async function addDish(dishName: string) {
   const user = await getUserFromSession()
@@ -19,20 +19,26 @@ export async function addDish(dishName: string) {
   let ingredients: any[] = []
   
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        { 
-          role: "system", 
-          content: "You are a chef. Return a JSON object with a key 'ingredients' containing a list of ingredients for the dish. Each ingredient should have 'name', 'amount' (string number), and 'unit' (string). Return ONLY JSON." 
-        },
-        { role: "user", content: `Ingredients for ${dishName}` }
-      ],
-      model: "gpt-3.5-turbo-0125",
-      response_format: { type: "json_object" }
-    });
-
-    const content = completion.choices[0].message.content
-    const parsed = JSON.parse(content || '{}')
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `
+      You are a chef. 
+      Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}". 
+      Each ingredient must have:
+      - 'name' (string, Russian or English based on dish name)
+      - 'amount' (number)
+      - 'unit' (string, e.g. kg, g, pcs, ml)
+      
+      Output ONLY raw JSON without markdown formatting.
+    `
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text();
+    
+    // Clean up markdown code blocks if any
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    
+    const parsed = JSON.parse(text);
     if (Array.isArray(parsed.ingredients)) {
         ingredients = parsed.ingredients
     }
@@ -119,8 +125,6 @@ export async function deleteDish(dishId: string) {
     
     const supabase = await createServerSideClient()
 
-    // Delete ingredients first (if no cascade)
-    // Actually our schema has ON DELETE CASCADE for ingredients so just deleting dish is enough
     const { error } = await supabase
       .from('dishes')
       .delete()
