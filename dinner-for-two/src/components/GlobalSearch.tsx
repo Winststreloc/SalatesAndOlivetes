@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,15 @@ interface GlobalSearchProps {
 export function GlobalSearch({ dishes, ingredients, onSelectDish, onSelectIngredient, isOpen, onClose }: GlobalSearchProps) {
   const { t } = useLang()
   const [query, setQuery] = useState('')
+  const [updateTrigger, setUpdateTrigger] = useState(0)
+
+  // Force re-calculation when dishes or ingredients change
+  useEffect(() => {
+    if (isOpen && query.trim()) {
+      // Trigger re-calculation of results when data changes
+      setUpdateTrigger(prev => prev + 1)
+    }
+  }, [dishes, ingredients, isOpen, query])
 
   const results = useMemo(() => {
     if (!query.trim()) return { dishes: [], ingredients: [] }
@@ -34,7 +43,7 @@ export function GlobalSearch({ dishes, ingredients, onSelectDish, onSelectIngred
     )
 
     return { dishes: matchingDishes, ingredients: matchingIngredients }
-  }, [query, dishes, ingredients])
+  }, [query, dishes, ingredients, updateTrigger])
 
   if (!isOpen) return null
 
