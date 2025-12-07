@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients } from '@/app/actions'
+import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
@@ -40,12 +40,15 @@ export function Dashboard() {
   const [manualIngredients, setManualIngredients] = useState<any[]>([])
   const [editingIngredient, setEditingIngredient] = useState<{ id: string, type: 'dish' | 'manual', name: string, amount: string, unit: string } | null>(null)
   const [showAddIngredient, setShowAddIngredient] = useState(false)
+  const [hasPartnerUser, setHasPartnerUser] = useState(false)
   const channelRef = useRef<any>(null)
   
   const refreshDishes = async () => {
     const data = await getDishes()
     setDishes(data)
     setLastUpdate(new Date())
+    // Also check for partner when refreshing dishes
+    await checkHasPartner()
   }
 
   const loadInviteCode = async () => {
@@ -58,12 +61,18 @@ export function Dashboard() {
       setManualIngredients(data)
   }
 
+  const checkHasPartner = async () => {
+      const hasPartnerResult = await hasPartner()
+      setHasPartnerUser(hasPartnerResult)
+  }
+
   useEffect(() => {
     if (!coupleId) return // Wait for coupleId to be available
     
     refreshDishes()
     loadInviteCode()
     loadManualIngredients()
+    checkHasPartner()
     
     // Supabase Realtime subscription with filtering
     const supabase = createClient()
@@ -703,8 +712,13 @@ export function Dashboard() {
                                                                {dish.name}
                                                            </div>
                                                            <div className="absolute top-2 right-2 flex gap-2">
-                                                               {/* Show approve button only if user is NOT the creator */}
-                                                               {dish.status === 'proposed' && dish.created_by !== user?.id && (
+                                                               {/* Show approve button if:
+                                                                   - User is NOT the creator AND has a partner, OR
+                                                                   - User IS the creator AND has NO partner (solo mode) */}
+                                                               {dish.status === 'proposed' && (
+                                                                   (dish.created_by !== user?.id && hasPartnerUser) || 
+                                                                   (dish.created_by === user?.id && !hasPartnerUser)
+                                                               ) && (
                                                                    <button 
                                                                      className="text-muted-foreground hover:text-green-500"
                                                                      onPointerDown={(e) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
@@ -713,8 +727,13 @@ export function Dashboard() {
                                                                        <CheckCircle2 className="h-5 w-5" />
                                                                    </button>
                                                                )}
-                                                               {/* Show unapprove button if dish is selected and user is NOT the creator */}
-                                                               {dish.status === 'selected' && dish.created_by !== user?.id && (
+                                                               {/* Show unapprove button if:
+                                                                   - User is NOT the creator AND has a partner, OR
+                                                                   - User IS the creator AND has NO partner (solo mode) */}
+                                                               {dish.status === 'selected' && (
+                                                                   (dish.created_by !== user?.id && hasPartnerUser) || 
+                                                                   (dish.created_by === user?.id && !hasPartnerUser)
+                                                               ) && (
                                                                    <button 
                                                                      className="text-green-500 hover:text-orange-500"
                                                                      onPointerDown={(e) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}

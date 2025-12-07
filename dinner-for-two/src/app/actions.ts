@@ -176,6 +176,24 @@ export async function getDishes() {
   return data || []
 }
 
+export async function hasPartner() {
+  const user = await getUserFromSession()
+  if (!user || !user.couple_id) return false
+
+  const supabase = await createServerSideClient()
+  
+  // Get all users in the couple
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('telegram_id')
+    .eq('couple_id', user.couple_id)
+  
+  if (error || !users) return false
+  
+  // Check if there are at least 2 users in the couple
+  return users.length >= 2
+}
+
 export async function toggleDishSelection(dishId: string, isSelected: boolean) {
   const user = await getUserFromSession()
   if (!user) {
