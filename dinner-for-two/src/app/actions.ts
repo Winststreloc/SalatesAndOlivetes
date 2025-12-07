@@ -1,17 +1,14 @@
 'use server'
 
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
-// ... (rest of imports and openai client) ...
-const openai = new OpenAI({
-  apiKey: process.env.AIML_API_KEY,
-  baseURL: "https://api.aimlapi.com/v1",
-})
+// Initialize Google Gemini client
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
 
 export async function addDish(dishName: string, dayOfWeek?: number) {
   const user = await getUserFromSession()
@@ -46,30 +43,35 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   let recipe: string = ''
   
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { 
-          role: "system", 
-          content: `You are a chef. 
-          Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish and a key 'recipe' containing cooking instructions.
-          Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
-          
-          Each ingredient must have:
-          - 'name' (string, ${lang === 'ru' ? 'in Russian' : 'in English'})
-          - 'amount' (number or string)
-          - 'unit' (string, e.g. kg, g, pcs, ml)
-          
-          The 'recipe' should be a string with steps formatted nicely (markdown allowed).
-          Return ONLY JSON.` 
-        },
-        { role: "user", content: `Dish: ${dishName}` }
-      ],
-      response_format: { type: "json_object" }
-    });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+    
+    const prompt = `You are a chef. 
+Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish and a key 'recipe' containing cooking instructions.
+Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
 
-    const content = completion.choices[0].message.content
-    const parsed = JSON.parse(content || '{}')
+Each ingredient must have:
+- 'name' (string, ${lang === 'ru' ? 'in Russian' : 'in English'})
+- 'amount' (number or string)
+- 'unit' (string, e.g. kg, g, pcs, ml)
+
+The 'recipe' should be a string with steps formatted nicely (markdown allowed).
+Return ONLY valid JSON, no other text.
+
+Dish: ${dishName}`
+
+    const result = await model.generateContent(prompt)
+    const response = await result.response
+    const content = response.text()
+    
+    // Try to extract JSON from response (might have markdown code blocks)
+    let jsonContent = content.trim()
+    if (jsonContent.startsWith('```json')) {
+      jsonContent = jsonContent.replace(/^```json\n?/, '').replace(/\n?```$/, '')
+    } else if (jsonContent.startsWith('```')) {
+      jsonContent = jsonContent.replace(/^```\n?/, '').replace(/\n?```$/, '')
+    }
+    
+    const parsed = JSON.parse(jsonContent || '{}')
     
     if (Array.isArray(parsed.ingredients)) {
         ingredients = parsed.ingredients
@@ -247,36 +249,39 @@ export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {
     if ([...sides, ...proteins, ...veggies, ...treats, ...cuisines].length === 0) return []
     
     try {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            { 
-              role: "system", 
-              content: `You are a creative chef. Suggest 4 distinct dinner ideas based on preferences.
-              Return ONLY a JSON object with a key 'ideas' containing an array of strings (dish names).
-              Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.` 
-            },
-            { 
-              role: "user", 
-              content: `
-              Preferred Sides: ${sides.join(', ') || 'Any'}
-              Preferred Proteins: ${proteins.join(', ') || 'Any'}
-              Preferred Veggies: ${veggies.join(', ') || 'Any'}
-              Cuisines: ${cuisines.join(', ') || 'Any'}
-              Treats/Cheat meal desires: ${treats.join(', ')}
-              
-              Guidelines:
-              1. Mix comfort food and healthy options based on choices.
-              2. If 'Treats' are selected, include at least one option from there.
-              3. Use different cooking methods.
-              4. Suggest COMPLETE dish names.` 
-            }
-          ],
-          response_format: { type: "json_object" }
-        });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+        
+        const prompt = `You are a creative chef. Suggest 4 distinct dinner ideas based on preferences.
+Return ONLY a JSON object with a key 'ideas' containing an array of strings (dish names).
+Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
 
-        const content = completion.choices[0].message.content
-        const parsed = JSON.parse(content || '{}')
+Preferred Sides: ${sides.join(', ') || 'Any'}
+Preferred Proteins: ${proteins.join(', ') || 'Any'}
+Preferred Veggies: ${veggies.join(', ') || 'Any'}
+Cuisines: ${cuisines.join(', ') || 'Any'}
+Treats/Cheat meal desires: ${treats.join(', ')}
+
+Guidelines:
+1. Mix comfort food and healthy options based on choices.
+2. If 'Treats' are selected, include at least one option from there.
+3. Use different cooking methods.
+4. Suggest COMPLETE dish names.
+
+Return ONLY valid JSON, no other text.`
+
+        const result = await model.generateContent(prompt)
+        const response = await result.response
+        const content = response.text()
+        
+        // Try to extract JSON from response (might have markdown code blocks)
+        let jsonContent = content.trim()
+        if (jsonContent.startsWith('```json')) {
+          jsonContent = jsonContent.replace(/^```json\n?/, '').replace(/\n?```$/, '')
+        } else if (jsonContent.startsWith('```')) {
+          jsonContent = jsonContent.replace(/^```\n?/, '').replace(/\n?```$/, '')
+        }
+        
+        const parsed = JSON.parse(jsonContent || '{}')
         return Array.isArray(parsed.ideas) ? parsed.ideas : []
     } catch (e) {
         console.error(e)

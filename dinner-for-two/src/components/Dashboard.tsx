@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, logout } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
@@ -10,22 +10,28 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
-import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut } from 'lucide-react'
+import { useAuth } from './AuthProvider'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
+  const { coupleId } = useAuth()
   const [tab, setTab] = useState<'plan' | 'list' | 'ideas'>('plan')
   const [dishes, setDishes] = useState<any[]>([])
   const [showInvite, setShowInvite] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [addingDay, setAddingDay] = useState<number | null>(null)
   const [selectedDish, setSelectedDish] = useState<any | null>(null)
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const channelRef = useRef<any>(null)
   
   const refreshDishes = async () => {
     const data = await getDishes()
     setDishes(data)
+    setLastUpdate(new Date())
   }
 
   const loadInviteCode = async () => {
@@ -34,35 +40,81 @@ export function Dashboard() {
   }
 
   useEffect(() => {
+    if (!coupleId) return // Wait for coupleId to be available
+    
     refreshDishes()
     loadInviteCode()
     
-    // Supabase Realtime subscription
+    // Supabase Realtime subscription with filtering
     const supabase = createClient()
     
-    const channel = supabase.channel('dashboard-changes')
+    const channel = supabase.channel(`dashboard-changes-${coupleId}`, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: 'user' }
+      }
+    })
+    
+    // Subscribe to dishes changes for this couple
+    channel
         .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'dishes' },
+            { 
+                event: '*', 
+                schema: 'public', 
+                table: 'dishes',
+                filter: `couple_id=eq.${coupleId}`
+            },
             (payload) => {
-                console.log('Realtime dishes update:', payload)
-                refreshDishes()
+                console.log('🔔 Realtime dishes update:', payload.eventType, payload)
+                
+                // Optimistic updates based on event type
+                if (payload.eventType === 'INSERT') {
+                    // New dish added - refresh to get full data with ingredients
+                    setTimeout(() => refreshDishes(), 100)
+                } else if (payload.eventType === 'UPDATE') {
+                    // Dish updated - update local state immediately
+                    setDishes(prev => prev.map(d => 
+                        d.id === payload.new.id ? { ...d, ...payload.new } : d
+                    ))
+                    // Then refresh to get related ingredients
+                    setTimeout(() => refreshDishes(), 100)
+                } else if (payload.eventType === 'DELETE') {
+                    // Dish deleted - remove from local state
+                    setDishes(prev => prev.filter(d => d.id !== payload.old.id))
+                } else {
+                    refreshDishes()
+                }
             }
         )
         .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'ingredients' },
+            { 
+                event: '*', 
+                schema: 'public', 
+                table: 'ingredients',
+                // Filter by dishes that belong to this couple
+                // Note: We can't filter directly on ingredients, so we refresh dishes
+            },
             (payload) => {
-                console.log('Realtime ingredients update:', payload)
-                refreshDishes()
+                console.log('🔔 Realtime ingredients update:', payload.eventType, payload)
+                // Ingredients changed - refresh dishes to get updated ingredient lists
+                setTimeout(() => refreshDishes(), 100)
             }
         )
-        .subscribe()
+        .subscribe((status) => {
+            console.log('📡 Realtime subscription status:', status)
+            setIsRealtimeConnected(status === 'SUBSCRIBED')
+        })
+
+    channelRef.current = channel
 
     return () => {
+        console.log('🔌 Cleaning up Realtime subscription')
         supabase.removeChannel(channel)
+        channelRef.current = null
     }
-  }, [])
+  }, [coupleId])
 
   const handleToggleDish = async (id: string, currentStatus: string) => {
     setDishes(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus === 'selected' ? 'proposed' : 'selected' } : d))
@@ -196,6 +248,11 @@ export function Dashboard() {
                 <Key className="h-4 w-4" />
              </Button>
              <h1 className="font-semibold text-sm text-gray-700">S&O</h1>
+             {isRealtimeConnected ? (
+                 <Wifi className="h-3 w-3 text-green-500" title="Realtime connected" />
+             ) : (
+                 <WifiOff className="h-3 w-3 text-gray-400" title="Realtime disconnected" />
+             )}
          </div>
          <div className="flex items-center space-x-1">
              <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>

@@ -104,9 +104,6 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
   return (
       <div className="space-y-4">
           <div className="flex justify-between items-center bg-blue-50 p-4 rounded-lg">
-             <div className="text-sm text-blue-800">
-                 Setup what you like to eat, and AI will suggest dishes!
-             </div>
              <Button variant="outline" onClick={() => setShowSettings(true)} size="sm" className="bg-white">
                  <Settings className="w-4 h-4 mr-2" />
                  {t.settings}
