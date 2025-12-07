@@ -131,13 +131,36 @@ export function Dashboard() {
   
   const handleShare = () => {
     if (!inviteCode) return
-    const inviteText = `Join me in S&O! My code: ${inviteCode}`
-    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteText)}`
+    // Create a direct link that opens the app with pre-filled invite code
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const inviteLink = `${appUrl}?invite=${inviteCode}`
+    const inviteText = `Join me in S&O! Click the link: ${inviteLink}`
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join me in S&O!')}`
     
     if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.openTelegramLink(url)
     } else {
         window.open(url, '_blank')
+    }
+  }
+
+  const handleCopyLink = async () => {
+    if (!inviteCode) return
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const inviteLink = `${appUrl}?invite=${inviteCode}`
+    
+    try {
+        await navigator.clipboard.writeText(inviteLink)
+        alert(t.copied)
+    } catch (e) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = inviteLink
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+        alert(t.copied)
     }
   }
 
@@ -292,7 +315,9 @@ export function Dashboard() {
                 {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
              </Button>
              <Button variant="ghost" size="icon" onClick={async () => {
-                await logout()
+                if (confirm(t.logoutConfirm || 'Are you sure you want to leave the couple? You will need to create or join a new couple.')) {
+                    await logout()
+                }
              }}>
                 <LogOut className="h-4 w-4 text-red-400" />
              </Button>
@@ -309,9 +334,22 @@ export function Dashboard() {
                        <div className="p-3 bg-gray-100 rounded font-mono select-all text-xl font-bold mb-4">
                            {inviteCode || '...'}
                        </div>
+                       <div className="mb-4">
+                           <a 
+                               href={typeof window !== 'undefined' ? `${window.location.origin}?invite=${inviteCode}` : '#'}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
+                           >
+                               {typeof window !== 'undefined' ? `${window.location.origin}?invite=${inviteCode}` : ''}
+                           </a>
+                       </div>
                        <Button className="w-full flex items-center gap-2 mb-2" onClick={handleShare}>
                          <Share2 className="w-4 h-4" />
                          {t.shareLink}
+                       </Button>
+                       <Button variant="outline" className="w-full flex items-center gap-2 mb-2" onClick={handleCopyLink}>
+                         {t.copyLink}
                        </Button>
                        <Button variant="ghost" onClick={() => setShowInvite(false)}>{t.close}</Button>
                    </CardContent>

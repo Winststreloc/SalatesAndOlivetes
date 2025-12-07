@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from './AuthProvider'
 import { useLang } from './LanguageProvider'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,19 @@ export function PairingScreen() {
   const { t, lang, setLang } = useLang()
   const [inviteCode, setInviteCode] = useState('')
   const [createdCode, setCreatedCode] = useState<string | null>(null)
+
+  // Check for invite parameter in URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const inviteParam = params.get('invite')
+      if (inviteParam) {
+        setInviteCode(inviteParam)
+        // Optionally auto-join if code is provided
+        // handleJoin() // Uncomment if you want auto-join
+      }
+    }
+  }, [])
 
   const handleCreate = async () => {
     const couple = await createCouple()
@@ -31,15 +44,35 @@ export function PairingScreen() {
 
   const handleShare = () => {
     if (!createdCode) return
-    const inviteText = `Join me in Dinner for Two! My code: ${createdCode}`
-    // Use Telegram URL scheme to open share dialog
-    // This will open a chat selection to send the message
-    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteText)}`
+    // Create a direct link that opens the app with pre-filled invite code
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const inviteLink = `${appUrl}?invite=${createdCode}`
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join me in S&O!')}`
     
     if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.openTelegramLink(url)
     } else {
         window.open(url, '_blank')
+    }
+  }
+
+  const handleCopyLink = async () => {
+    if (!createdCode) return
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    const inviteLink = `${appUrl}?invite=${createdCode}`
+    
+    try {
+        await navigator.clipboard.writeText(inviteLink)
+        alert(t.copied)
+    } catch (e) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = inviteLink
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+        alert(t.copied)
     }
   }
 
@@ -71,13 +104,26 @@ export function PairingScreen() {
            ) : (
              <div className="text-center">
                <p className="mb-2">{t.shareCode}</p>
-               <div className="p-4 bg-gray-100 rounded font-mono select-all text-lg font-bold">
+               <div className="p-4 bg-gray-100 rounded font-mono select-all text-lg font-bold mb-4">
                  {createdCode}
+               </div>
+               <div className="mb-4">
+                   <a 
+                       href={typeof window !== 'undefined' ? `${window.location.origin}?invite=${createdCode}` : '#'}
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
+                   >
+                       {typeof window !== 'undefined' ? `${window.location.origin}?invite=${createdCode}` : ''}
+                   </a>
                </div>
                
                <Button className="w-full mt-4 flex items-center gap-2" onClick={handleShare}>
                  <Share2 className="w-4 h-4" />
                  {t.shareLink}
+               </Button>
+               <Button variant="outline" className="w-full mt-2" onClick={handleCopyLink}>
+                 {t.copyLink}
                </Button>
                
                <p className="text-xs text-gray-500 mt-4">{t.waiting}</p>
