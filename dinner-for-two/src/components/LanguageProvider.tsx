@@ -121,7 +121,8 @@ const translations = {
     delete: "Delete",
     deleteDishConfirm: "Are you sure you want to delete this dish?",
     deleteIngredientConfirm: "Are you sure you want to delete this ingredient?",
-    logout: "Logout"
+    logout: "Logout",
+    noResults: "No results found"
   },
   ru: {
     startNew: "Создать пару",
