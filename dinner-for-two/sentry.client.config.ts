@@ -42,6 +42,14 @@ Sentry.init({
 
   // Filter out known errors that we don't want to track
   beforeSend(event, hint) {
+    console.log('📤 [Sentry beforeSend] Event:', {
+      type: event.type,
+      level: event.level,
+      message: event.message,
+      exception: event.exception?.values?.[0]?.value,
+      tags: event.tags,
+    });
+
     const error = hint.originalException;
     
     // Ignore validation errors (they're expected and handled)
@@ -54,6 +62,7 @@ Sentry.init({
         message.includes('not a food-related') ||
         message.includes('связанное с едой')
       ) {
+        console.log('🚫 [Sentry beforeSend] Filtering out validation error');
         return null; // Don't send to Sentry
       }
     }
@@ -68,6 +77,7 @@ Sentry.init({
       });
     }
 
+    console.log('✅ [Sentry beforeSend] Event will be sent, event ID:', event.event_id);
     return event;
   },
 });

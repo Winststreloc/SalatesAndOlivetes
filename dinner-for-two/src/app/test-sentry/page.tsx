@@ -12,9 +12,24 @@ export default function TestSentryPage() {
   const checkDsn = () => {
     const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
     if (dsn) {
-      setDsnStatus(`✅ DSN установлен: ${dsn.substring(0, 30)}...`)
+      // Parse DSN to show more info
+      try {
+        const dsnUrl = new URL(dsn.replace(/^https?:\/\//, 'https://'))
+        setDsnStatus(`✅ DSN установлен:
+- Host: ${dsnUrl.host}
+- Project ID: ${dsnUrl.pathname.split('/').pop()}
+- Preview: ${dsn.substring(0, 50)}...`)
+        console.log('📊 DSN Details:', {
+          full: dsn,
+          host: dsnUrl.host,
+          projectId: dsnUrl.pathname.split('/').pop(),
+        })
+      } catch (e) {
+        setDsnStatus(`✅ DSN установлен: ${dsn.substring(0, 50)}...`)
+      }
     } else {
       setDsnStatus('❌ DSN НЕ установлен! Установите NEXT_PUBLIC_SENTRY_DSN в Vercel')
+      console.error('❌ NEXT_PUBLIC_SENTRY_DSN is not set!')
     }
   }
 
@@ -57,10 +72,35 @@ export default function TestSentryPage() {
   const checkClient = () => {
     const client = Sentry.getClient()
     if (client) {
-      setStatus(`✅ Sentry клиент инициализирован: ${client.getDsn()?.host || 'unknown'}`)
+      const dsn = client.getDsn()
+      const options = client.getOptions()
+      setStatus(`✅ Sentry клиент инициализирован:
+- Host: ${dsn?.host || 'unknown'}
+- Project ID: ${dsn?.projectId || 'unknown'}
+- Environment: ${options.environment || 'not set'}
+- Debug: ${options.debug ? 'enabled' : 'disabled'}`)
+      console.log('📊 Sentry Client Info:', {
+        dsn: dsn,
+        options: {
+          environment: options.environment,
+          debug: options.debug,
+          enabled: options.enabled,
+        },
+      })
     } else {
       setStatus('❌ Sentry клиент НЕ инициализирован!')
+      console.error('❌ Sentry client is not initialized!')
     }
+  }
+  
+  const checkNetwork = () => {
+    setStatus('🔍 Проверьте Network tab в DevTools (F12 → Network)')
+    console.log('🔍 Проверьте Network tab:')
+    console.log('1. Откройте DevTools (F12)')
+    console.log('2. Перейдите на вкладку Network')
+    console.log('3. Отфильтруйте по "sentry" или "ingest"')
+    console.log('4. Отправьте тестовое сообщение')
+    console.log('5. Должны появиться запросы к sentry.io')
   }
 
   return (
@@ -82,6 +122,12 @@ export default function TestSentryPage() {
           <div className="space-y-2">
             <Button onClick={checkClient} className="w-full">
               Проверить клиент Sentry
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <Button onClick={checkNetwork} variant="outline" className="w-full">
+              Инструкция: Проверить Network запросы
             </Button>
           </div>
 
@@ -115,14 +161,42 @@ export default function TestSentryPage() {
           </div>
 
           <div className="mt-4 p-4 bg-yellow-50 rounded">
-            <h3 className="font-semibold mb-2">Если не работает:</h3>
-            <ul className="list-disc list-inside space-y-1 text-sm">
-              <li>Проверьте, что NEXT_PUBLIC_SENTRY_DSN установлен в Vercel</li>
-              <li>Убедитесь, что переменная доступна для Production окружения</li>
-              <li>Проверьте консоль браузера на наличие ошибок</li>
-              <li>Отключите блокировщики рекламы (они могут блокировать Sentry)</li>
-              <li>Проверьте Network tab в DevTools - должны быть запросы к sentry.io</li>
-            </ul>
+            <h3 className="font-semibold mb-2">Если сообщения не появляются в Sentry:</h3>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li><strong>Проверьте DSN:</strong> Нажмите "Проверить DSN" и убедитесь, что он установлен и правильный</li>
+              <li><strong>Проверьте Network запросы:</strong>
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li>Откройте DevTools (F12) → Network</li>
+                  <li>Отфильтруйте по "sentry" или "ingest"</li>
+                  <li>Отправьте тестовое сообщение</li>
+                  <li>Должны появиться POST запросы к <code>*.ingest.sentry.io</code></li>
+                  <li>Проверьте статус ответа (должен быть 200)</li>
+                </ul>
+              </li>
+              <li><strong>Проверьте консоль:</strong> Должны быть логи:
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li><code>📤 [Sentry beforeSend] Event:</code> - событие готовится к отправке</li>
+                  <li><code>✅ [Sentry beforeSend] Event will be sent</code> - событие будет отправлено</li>
+                  <li>Если видите <code>🚫 [Sentry beforeSend] Filtering out</code> - событие фильтруется</li>
+                </ul>
+              </li>
+              <li><strong>Проверьте Sentry Dashboard:</strong>
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li>Убедитесь, что вы смотрите правильный проект</li>
+                  <li>Проверьте фильтры (может быть установлен фильтр по времени/окружению)</li>
+                  <li>Попробуйте поискать по тегу <code>test:true</code></li>
+                  <li>Проверьте раздел "Discover" вместо "Issues"</li>
+                </ul>
+              </li>
+              <li><strong>Другие причины:</strong>
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li>Отключите блокировщики рекламы (uBlock, AdBlock и т.д.)</li>
+                  <li>Проверьте, что DSN правильный (должен начинаться с <code>https://</code>)</li>
+                  <li>Убедитесь, что переменная доступна для Production окружения в Vercel</li>
+                  <li>Проверьте, что проект в Sentry активен и не заблокирован</li>
+                </ul>
+              </li>
+            </ol>
           </div>
         </CardContent>
       </Card>
