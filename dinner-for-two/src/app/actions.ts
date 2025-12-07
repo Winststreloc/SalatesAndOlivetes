@@ -4,8 +4,10 @@ import OpenAI from 'openai'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 
-// Initialize AIML (OpenAI compatible) client
+// ... (rest of imports and openai client) ...
 const openai = new OpenAI({
   apiKey: process.env.AIML_API_KEY,
   baseURL: "https://api.aimlapi.com/v1",
@@ -280,4 +282,10 @@ export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {
         console.error(e)
         return []
     }
+}
+
+export async function logout() {
+    const cookieStore = await cookies()
+    cookieStore.delete('session')
+    redirect('/')
 }

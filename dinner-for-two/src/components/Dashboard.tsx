@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients } from '@/app/actions'
+import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, logout } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
@@ -10,7 +10,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
-import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen } from 'lucide-react'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
 
@@ -191,13 +191,20 @@ export function Dashboard() {
   return (
     <div className="flex flex-col h-screen bg-gray-50 relative">
        <div className="flex justify-between p-3 bg-white border-b items-center shadow-sm z-10">
-         <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
-            <Key className="h-4 w-4" />
-         </Button>
-         <h1 className="font-semibold text-sm text-gray-700">S&O</h1>
-         <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
-            {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
-         </Button>
+         <div className="flex items-center space-x-2">
+             <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
+                <Key className="h-4 w-4" />
+             </Button>
+             <h1 className="font-semibold text-sm text-gray-700">S&O</h1>
+         </div>
+         <div className="flex items-center space-x-1">
+             <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
+                {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
+             </Button>
+             <Button variant="ghost" size="icon" onClick={() => logout()}>
+                <LogOut className="h-4 w-4 text-red-400" />
+             </Button>
+         </div>
        </div>
 
        {showInvite && (
