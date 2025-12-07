@@ -29,7 +29,8 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
       couple_id: user.couple_id,
       name: dishName,
       status: 'proposed',
-      day_of_week: dayOfWeek 
+      day_of_week: dayOfWeek,
+      created_by: user.telegram_id
     })
     .select()
     .single()
@@ -147,6 +148,23 @@ export async function toggleDishSelection(dishId: string, isSelected: boolean) {
   }
   
   const supabase = await createServerSideClient()
+  
+  // Get dish to check if user is the creator
+  const { data: dish } = await supabase
+    .from('dishes')
+    .select('created_by, status')
+    .eq('id', dishId)
+    .eq('couple_id', user.couple_id)
+    .single()
+  
+  if (!dish) {
+    throw new Error('Dish not found')
+  }
+  
+  // Only partner (not creator) can approve/disapprove
+  if (dish.created_by === user.telegram_id) {
+    throw new Error('You cannot approve your own dish. Only your partner can approve it.')
+  }
   
   const { error } = await supabase
     .from('dishes')

@@ -17,7 +17,7 @@ import { createClient } from '@/lib/supabase'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
-  const { coupleId, logout } = useAuth()
+  const { coupleId, logout, user } = useAuth()
   const [tab, setTab] = useState<'plan' | 'list' | 'ideas'>('plan')
   const [dishes, setDishes] = useState<any[]>([])
   const [showInvite, setShowInvite] = useState(false)
@@ -26,6 +26,8 @@ export function Dashboard() {
   const [selectedDish, setSelectedDish] = useState<any | null>(null)
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [showDaySelector, setShowDaySelector] = useState(false)
+  const [pendingIdea, setPendingIdea] = useState<string | null>(null)
   const channelRef = useRef<any>(null)
   
   const refreshDishes = async () => {
@@ -139,12 +141,21 @@ export function Dashboard() {
     }
   }
 
-  const handleAddIdea = async (name: string) => {
-      const today = new Date().getDay()
-      const adjustedDay = today === 0 ? 6 : today - 1 
+  const handleAddIdea = (name: string) => {
+      // Show day selector modal
+      setPendingIdea(name)
+      setShowDaySelector(true)
+  }
+
+  const handleConfirmAddIdea = async (day: number) => {
+      if (!pendingIdea) return
+      
+      setShowDaySelector(false)
+      const name = pendingIdea
+      setPendingIdea(null)
       
       try {
-          const dish = await addDish(name, adjustedDay)
+          const dish = await addDish(name, day)
           
           // Optimistic update - add dish to local state immediately
           setDishes(prev => [...prev, {
@@ -310,6 +321,34 @@ export function Dashboard() {
        
        <RecipeView dish={selectedDish} isOpen={!!selectedDish} onClose={() => setSelectedDish(null)} />
 
+       {/* Day Selector Modal */}
+       {showDaySelector && (
+           <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+               <Card className="w-full max-w-sm">
+                   <CardHeader>
+                       <CardHeader className="p-4 font-bold text-center">{t.selectDay}</CardHeader>
+                   </CardHeader>
+                   <CardContent className="text-center pb-6">
+                       <div className="grid grid-cols-2 gap-2 mb-4">
+                           {orderedDays.map(dayIndex => (
+                               <Button
+                                   key={dayIndex}
+                                   variant="outline"
+                                   onClick={() => handleConfirmAddIdea(dayIndex)}
+                                   className="h-12"
+                               >
+                                   {t.days[dayIndex]}
+                               </Button>
+                           ))}
+                       </div>
+                       <Button variant="ghost" onClick={() => { setShowDaySelector(false); setPendingIdea(null) }}>
+                           {t.close}
+                       </Button>
+                   </CardContent>
+               </Card>
+           </div>
+       )}
+
        <div className="flex-1 overflow-auto p-4 pb-24 scroll-smooth">
           <h1 className="text-xl font-bold mb-4">
              {tab === 'plan' ? t.planMenu : (tab === 'list' ? t.shoppingList : t.ideas)}
@@ -354,10 +393,22 @@ export function Dashboard() {
                                                                {dish.name}
                                                            </div>
                                                            <div className="absolute top-2 right-2 flex gap-2">
-                                                               {dish.status === 'proposed' && (
+                                                               {/* Show approve button only if user is NOT the creator */}
+                                                               {dish.status === 'proposed' && dish.created_by !== user?.id && (
                                                                    <button 
                                                                      className="text-gray-300 hover:text-green-500"
                                                                      onPointerDown={(e) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
+                                                                     title={t.approve}
+                                                                   >
+                                                                       <CheckCircle2 className="h-5 w-5" />
+                                                                   </button>
+                                                               )}
+                                                               {/* Show unapprove button if dish is selected and user is NOT the creator */}
+                                                               {dish.status === 'selected' && dish.created_by !== user?.id && (
+                                                                   <button 
+                                                                     className="text-green-500 hover:text-orange-500"
+                                                                     onPointerDown={(e) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
+                                                                     title={t.unapprove}
                                                                    >
                                                                        <CheckCircle2 className="h-5 w-5" />
                                                                    </button>

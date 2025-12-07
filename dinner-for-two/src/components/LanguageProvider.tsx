@@ -75,7 +75,10 @@ const translations = {
     russian: "Russian",
     georgian: "Georgian",
     mexican: "Mexican",
-    select: "Select"
+    select: "Select",
+    approve: "Approve",
+    unapprove: "Unapprove",
+    selectDay: "Select Day"
   },
   ru: {
     startNew: "Создать пару",
@@ -146,7 +149,10 @@ const translations = {
     russian: "Русская",
     georgian: "Грузинская",
     mexican: "Мексиканская",
-    select: "Выбрать"
+    select: "Выбрать",
+    approve: "Одобрить",
+    unapprove: "Отменить одобрение",
+    selectDay: "Выберите день"
   }
 }
 
