@@ -37,18 +37,21 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   const supabase = await createServerSideClient()
   
   let ingredients: any[] = []
+  let recipe: string = ''
   
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `
       You are a chef. 
-      Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}". 
+      Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}" and a key 'recipe' containing cooking instructions.
       Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
       
       Each ingredient must have:
       - 'name' (string, ${lang === 'ru' ? 'in Russian' : 'in English'})
       - 'amount' (number)
       - 'unit' (string, e.g. kg, g, pcs, ml)
+      
+      The 'recipe' should be a string with steps formatted nicely (you can use newlines or simple markdown).
       
       Output ONLY raw JSON without markdown formatting.
     `
@@ -63,9 +66,17 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     if (Array.isArray(parsed.ingredients)) {
         ingredients = parsed.ingredients
     }
+    if (parsed.recipe) {
+        recipe = parsed.recipe
+    }
   } catch (e) {
     console.error('AI Generation failed', e)
     return { success: false, error: 'AI failed' }
+  }
+
+  // Update dish with recipe
+  if (recipe) {
+      await supabase.from('dishes').update({ recipe }).eq('id', dishId)
   }
 
   if (ingredients.length > 0) {

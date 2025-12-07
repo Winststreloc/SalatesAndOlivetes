@@ -5,12 +5,14 @@ import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish,
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
+import { RecipeView } from './RecipeView'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
-import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb } from 'lucide-react'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { createClient } from '@/lib/supabase'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -19,6 +21,7 @@ export function Dashboard() {
   const [showInvite, setShowInvite] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [addingDay, setAddingDay] = useState<number | null>(null)
+  const [selectedDish, setSelectedDish] = useState<any | null>(null)
   
   const refreshDishes = async () => {
     const data = await getDishes()
@@ -33,21 +36,43 @@ export function Dashboard() {
   useEffect(() => {
     refreshDishes()
     loadInviteCode()
-    const interval = setInterval(refreshDishes, 5000)
-    return () => clearInterval(interval)
+    
+    // Supabase Realtime subscription
+    const supabase = createClient()
+    
+    const channel = supabase.channel('dashboard-changes')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'dishes' },
+            (payload) => {
+                console.log('Realtime dishes update:', payload)
+                refreshDishes()
+            }
+        )
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'ingredients' },
+            (payload) => {
+                console.log('Realtime ingredients update:', payload)
+                refreshDishes()
+            }
+        )
+        .subscribe()
+
+    return () => {
+        supabase.removeChannel(channel)
+    }
   }, [])
 
   const handleToggleDish = async (id: string, currentStatus: string) => {
     setDishes(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus === 'selected' ? 'proposed' : 'selected' } : d))
     await toggleDishSelection(id, currentStatus !== 'selected')
-    refreshDishes()
   }
   
   const handleDeleteDish = async (id: string) => {
       if (!confirm('Are you sure?')) return
       setDishes(prev => prev.filter(d => d.id !== id))
       await deleteDish(id)
-      refreshDishes()
   }
   
   const handleShare = () => {
@@ -69,7 +94,7 @@ export function Dashboard() {
       const dish = await addDish(name, adjustedDay)
       // Pass LANG here
       generateDishIngredients(dish.id, dish.name, lang)
-      refreshDishes()
+      // refreshDishes() - Realtime will catch insert
       setTab('plan')
       alert(`Added "${name}" to ${t.days[adjustedDay]}`)
   }
@@ -80,9 +105,16 @@ export function Dashboard() {
     
     selectedDishes.forEach(dish => {
       dish.ingredients.forEach((ing: any) => {
+        // Improved deduplication
         const cleanName = ing.name.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim().toLowerCase()
         const cleanUnit = ing.unit?.trim().toLowerCase() || ''
-        const key = `${cleanName}-${cleanUnit}`
+        
+        let singularName = cleanName
+        if (cleanName.endsWith('oes')) singularName = cleanName.slice(0, -2)
+        else if (cleanName.endsWith('s') && !cleanName.endsWith('ss')) singularName = cleanName.slice(0, -1)
+        
+        const key = `${singularName}-${cleanUnit}`
+        
         const existing = map.get(key)
         let amount = parseFloat(String(ing.amount).replace(',', '.')) || 0
         
@@ -113,7 +145,6 @@ export function Dashboard() {
         )
     })))
     await toggleIngredientsPurchased(item.ids, newStatus)
-    refreshDishes()
   }
   
   const dishesByDay = useMemo(() => {
@@ -155,7 +186,6 @@ export function Dashboard() {
         return d
     }))
     await moveDish(dishId, destDay);
-    refreshDishes();
   };
 
   return (
@@ -189,6 +219,8 @@ export function Dashboard() {
                </Card>
            </div>
        )}
+       
+       <RecipeView dish={selectedDish} isOpen={!!selectedDish} onClose={() => setSelectedDish(null)} />
 
        <div className="flex-1 overflow-auto p-4 pb-24 scroll-smooth">
           <h1 className="text-xl font-bold mb-4">
@@ -229,7 +261,8 @@ export function Dashboard() {
                                                        style={{ ...provided.draggableProps.style }}
                                                    >
                                                        <div className="flex justify-between items-start">
-                                                           <div className="font-medium pr-6 flex items-center">
+                                                           <div className="font-medium pr-6 flex items-center cursor-pointer hover:text-blue-600 transition-colors" onClick={() => setSelectedDish(dish)}>
+                                                               <BookOpen className="w-4 h-4 mr-2 text-gray-400" />
                                                                {dish.name}
                                                            </div>
                                                            <div className="absolute top-2 right-2 flex gap-2">
@@ -273,7 +306,6 @@ export function Dashboard() {
                                               day={dayIndex} 
                                               onAdded={() => {
                                                   setAddingDay(null)
-                                                  refreshDishes()
                                               }} 
                                               onCancel={() => setAddingDay(null)} 
                                            />
