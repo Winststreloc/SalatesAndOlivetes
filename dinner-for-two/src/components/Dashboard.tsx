@@ -1,24 +1,27 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients } from '@/app/actions'
+import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
 import { RecipeView } from './RecipeView'
+import { HistoryView } from './HistoryView'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
 import { useAuth } from './AuthProvider'
-import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff } from 'lucide-react'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff, Search, History, Moon, Sun } from 'lucide-react'
+import { groupByCategory, IngredientCategory, CategorizedIngredient } from '@/utils/ingredientCategories'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
   const { coupleId, logout, user } = useAuth()
-  const [tab, setTab] = useState<'plan' | 'list' | 'ideas'>('plan')
+  const { theme, toggleTheme } = useTheme()
+  const [tab, setTab] = useState<'plan' | 'list' | 'ideas' | 'history'>('plan')
   const [dishes, setDishes] = useState<any[]>([])
   const [showInvite, setShowInvite] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
@@ -125,8 +128,15 @@ export function Dashboard() {
   
   const handleDeleteDish = async (id: string) => {
       if (!confirm('Are you sure?')) return
-      setDishes(prev => prev.filter(d => d.id !== id))
-      await deleteDish(id)
+      try {
+        setDishes(prev => prev.filter(d => d.id !== id))
+        await deleteDish(id)
+      } catch (e: any) {
+        console.error('Failed to delete dish:', e)
+        // Revert optimistic update
+        refreshDishes()
+        alert(e.message || 'Failed to delete dish')
+      }
   }
   
   const handleShare = () => {
@@ -237,18 +247,129 @@ export function Dashboard() {
         }
       })
     })
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [dishes])
+    
+    let items = Array.from(map.values())
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      items = items.filter(item => item.name.toLowerCase().includes(query))
+    }
+    
+    // Apply sorting
+    if (sortBy === 'alphabetical') {
+      items.sort((a, b) => a.name.localeCompare(b.name))
+    } else if (sortBy === 'amount') {
+      items.sort((a, b) => b.amount - a.amount)
+    }
+    // category sorting is handled by groupByCategory
+    
+    return items
+  }, [dishes, searchQuery, sortBy])
+  
+  const categorizedList = useMemo(() => {
+    return groupByCategory(shoppingList)
+  }, [shoppingList])
+  
+  const categoryLabels: Record<IngredientCategory, string> = {
+    vegetables: t.categoryVegetables,
+    fruits: t.categoryFruits,
+    meat: t.categoryMeat,
+    dairy: t.categoryDairy,
+    bakery: t.categoryBakery,
+    pantry: t.categoryPantry,
+    spices: t.categorySpices,
+    other: t.categoryOther
+  }
+  
+  const categoryOrder: IngredientCategory[] = ['vegetables', 'fruits', 'meat', 'dairy', 'bakery', 'pantry', 'spices', 'other']
+
+  const handleExportText = () => {
+    let text = `${t.shoppingList}\n\n`
+    
+    if (sortBy === 'category') {
+      categoryOrder.forEach(category => {
+        const items = categorizedList[category]
+        if (items.length === 0) return
+        
+        text += `${categoryLabels[category]}:\n`
+        items.forEach(item => {
+          const amount = item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''
+          const check = item.is_purchased ? '✓' : '☐'
+          text += `  ${check} ${item.name}${amount ? ` - ${amount}` : ''}\n`
+        })
+        text += '\n'
+      })
+    } else {
+      shoppingList.forEach(item => {
+        const amount = item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''
+        const check = item.is_purchased ? '✓' : '☐'
+        text += `${check} ${item.name}${amount ? ` - ${amount}` : ''}\n`
+      })
+    }
+    
+    // Create and download file
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `shopping-list-${new Date().toISOString().split('T')[0]}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportTelegram = () => {
+    let text = `🛒 ${t.shoppingList}\n\n`
+    
+    if (sortBy === 'category') {
+      categoryOrder.forEach(category => {
+        const items = categorizedList[category]
+        if (items.length === 0) return
+        
+        text += `📦 ${categoryLabels[category]}:\n`
+        items.forEach(item => {
+          const amount = item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''
+          const check = item.is_purchased ? '✅' : '☐'
+          text += `${check} ${item.name}${amount ? ` - ${amount}` : ''}\n`
+        })
+        text += '\n'
+      })
+    } else {
+      shoppingList.forEach(item => {
+        const amount = item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''
+        const check = item.is_purchased ? '✅' : '☐'
+        text += `${check} ${item.name}${amount ? ` - ${amount}` : ''}\n`
+      })
+    }
+    
+    // Share via Telegram
+    const url = `https://t.me/share/url?url=${encodeURIComponent(text)}&text=${encodeURIComponent(t.shoppingList)}`
+    
+    if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.openTelegramLink(url)
+    } else {
+        window.open(url, '_blank')
+    }
+  }
 
   const handleToggleIngredient = async (item: any) => {
-    const newStatus = !item.is_purchased
-    setDishes(prev => prev.map(d => ({
-        ...d,
-        ingredients: d.ingredients.map((ing: any) => 
-            item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
-        )
-    })))
-    await toggleIngredientsPurchased(item.ids, newStatus)
+    try {
+      const newStatus = !item.is_purchased
+      setDishes(prev => prev.map(d => ({
+          ...d,
+          ingredients: d.ingredients.map((ing: any) => 
+              item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
+          )
+      })))
+      await toggleIngredientsPurchased(item.ids, newStatus)
+    } catch (e: any) {
+      console.error('Failed to toggle ingredient:', e)
+      // Revert optimistic update
+      refreshDishes()
+      alert(e.message || 'Failed to update ingredient')
+    }
   }
   
   const dishesByDay = useMemo(() => {
@@ -313,6 +434,9 @@ export function Dashboard() {
          <div className="flex items-center space-x-1">
              <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
                 {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
+             </Button>
+             <Button variant="ghost" size="icon" onClick={toggleTheme}>
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
              </Button>
              <Button variant="ghost" size="icon" onClick={async () => {
                 if (confirm(t.logoutConfirm || 'Are you sure you want to leave the couple? You will need to create or join a new couple.')) {
@@ -389,11 +513,23 @@ export function Dashboard() {
 
        <div className="flex-1 overflow-auto p-4 pb-24 scroll-smooth">
           <h1 className="text-xl font-bold mb-4">
-             {tab === 'plan' ? t.planMenu : (tab === 'list' ? t.shoppingList : t.ideas)}
+             {tab === 'plan' ? t.planMenu : (tab === 'list' ? t.shoppingList : (tab === 'ideas' ? t.ideas : t.history))}
           </h1>
           
           {tab === 'ideas' && (
               <IdeasTab onSelectIdea={handleAddIdea} />
+          )}
+
+          {tab === 'history' && (
+              <HistoryView 
+                currentDishes={dishes} 
+                onLoadWeek={async (loadedDishes) => {
+                  // Replace current dishes with loaded ones
+                  // Need to recreate dishes in DB or just show them
+                  setDishes(loadedDishes)
+                  setTab('plan')
+                }} 
+              />
           )}
 
           {tab === 'plan' && (
@@ -516,25 +652,95 @@ export function Dashboard() {
           )}
 
           {tab === 'list' && (
-            <div className="space-y-2">
+            <div className="space-y-4">
                {shoppingList.length === 0 ? (
                  <p className="text-gray-500 text-center mt-10">{t.selectDishesHint}</p>
                ) : (
-                 shoppingList.map((item, idx) => (
-                   <div key={idx} className="flex items-center space-x-3 p-3 bg-white rounded shadow-sm">
-                      <Checkbox 
-                        id={`ing-${idx}`} 
-                        checked={item.is_purchased}
-                        onCheckedChange={() => handleToggleIngredient(item)}
-                      />
-                      <label htmlFor={`ing-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-gray-400' : ''}`}>
-                        <span className="font-medium">{item.name}</span>
-                        <span className="text-gray-500 ml-2">
-                          {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
-                        </span>
-                      </label>
+                 <>
+                   {/* Search and Sort Controls */}
+                   <div className="flex gap-2 mb-4">
+                     <div className="flex-1 relative">
+                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                       <Input
+                         placeholder={t.search}
+                         value={searchQuery}
+                         onChange={(e) => setSearchQuery(e.target.value)}
+                         className="pl-10"
+                       />
+                     </div>
+                     <select
+                       value={sortBy}
+                       onChange={(e) => setSortBy(e.target.value as 'alphabetical' | 'category' | 'amount')}
+                       className="px-3 py-2 border rounded-md text-sm bg-white"
+                     >
+                       <option value="category">{t.sortCategory}</option>
+                       <option value="alphabetical">{t.sortAlphabetical}</option>
+                       <option value="amount">{t.sortAmount}</option>
+                     </select>
                    </div>
-                 ))
+                   
+                   {/* Export Buttons */}
+                   <div className="flex gap-2 mb-4">
+                     <Button variant="outline" size="sm" onClick={handleExportText} className="flex-1">
+                       <Download className="w-4 h-4 mr-2" />
+                       {t.exportAsText}
+                     </Button>
+                     <Button variant="outline" size="sm" onClick={handleExportTelegram} className="flex-1">
+                       <Share2 className="w-4 h-4 mr-2" />
+                       {t.exportAsTelegram}
+                     </Button>
+                   </div>
+                   
+                   {/* Grouped by Category */}
+                   {sortBy === 'category' ? (
+                     categoryOrder.map(category => {
+                       const items = categorizedList[category]
+                       if (items.length === 0) return null
+                       
+                       return (
+                         <div key={category} className="mb-4">
+                           <h3 className="font-semibold text-sm text-gray-700 mb-2 px-2">
+                             {categoryLabels[category]}
+                           </h3>
+                           <div className="space-y-2">
+                             {items.map((item, idx) => (
+                               <div key={`${category}-${idx}`} className="flex items-center space-x-3 p-3 bg-white rounded shadow-sm">
+                                 <Checkbox 
+                                   id={`ing-${category}-${idx}`} 
+                                   checked={item.is_purchased}
+                                   onCheckedChange={() => handleToggleIngredient(item)}
+                                 />
+                                 <label htmlFor={`ing-${category}-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-gray-400' : ''}`}>
+                                   <span className="font-medium">{item.name}</span>
+                                   <span className="text-gray-500 ml-2">
+                                     {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
+                                   </span>
+                                 </label>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
+                       )
+                     })
+                   ) : (
+                     /* Flat list for alphabetical/amount sorting */
+                     shoppingList.map((item, idx) => (
+                       <div key={idx} className="flex items-center space-x-3 p-3 bg-white rounded shadow-sm">
+                         <Checkbox 
+                           id={`ing-${idx}`} 
+                           checked={item.is_purchased}
+                           onCheckedChange={() => handleToggleIngredient(item)}
+                         />
+                         <label htmlFor={`ing-${idx}`} className={`flex-1 cursor-pointer ${item.is_purchased ? 'line-through text-gray-400' : ''}`}>
+                           <span className="font-medium">{item.name}</span>
+                           <span className="text-gray-500 ml-2">
+                             {item.amount > 0 ? `${parseFloat(item.amount.toFixed(2))} ${item.unit || ''}` : ''}
+                           </span>
+                         </label>
+                       </div>
+                     ))
+                   )}
+                 </>
                )}
             </div>
           )}
@@ -552,6 +758,10 @@ export function Dashboard() {
           <Button variant={tab === 'list' ? 'default' : 'ghost'} onClick={() => setTab('list')} className="flex-1 mx-1">
             {/* Shopping cart icon? */}
             <span className="text-xs">{t.shoppingList}</span>
+          </Button>
+          <Button variant={tab === 'history' ? 'default' : 'ghost'} onClick={() => setTab('history')} className="flex-1 mx-1">
+            <History className="w-4 h-4 mr-2" />
+            <span className="text-xs">{t.history}</span>
           </Button>
        </div>
     </div>

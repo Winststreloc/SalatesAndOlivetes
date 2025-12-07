@@ -54,13 +54,36 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   
   const supabase = await createServerSideClient()
   
+  // Check cache first
+  const dishNameLower = dishName.toLowerCase().trim()
+  const { data: cached } = await supabase
+    .from('dish_cache')
+    .select('ingredients, recipe')
+    .eq('dish_name_lower', dishNameLower)
+    .eq('lang', lang)
+    .single()
+  
   let ingredients: any[] = []
   let recipe: string = ''
   
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+  if (cached) {
+    // Use cached data
+    console.log('Using cached data for:', dishName)
+    ingredients = cached.ingredients || []
+    recipe = cached.recipe || ''
     
-    const prompt = `You are a chef. 
+    // Update usage count
+    await supabase
+      .from('dish_cache')
+      .update({ usage_count: (cached as any).usage_count + 1 })
+      .eq('dish_name_lower', dishNameLower)
+      .eq('lang', lang)
+  } else {
+    // Generate new data
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+      
+      const prompt = `You are a chef. 
 Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish and a key 'recipe' containing cooking instructions.
 Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
 
@@ -74,29 +97,46 @@ Return ONLY valid JSON, no other text.
 
 Dish: ${dishName}`
 
-    const result = await model.generateContent(prompt)
-    const response = await result.response
-    const content = response.text()
-    
-    // Try to extract JSON from response (might have markdown code blocks)
-    let jsonContent = content.trim()
-    if (jsonContent.startsWith('```json')) {
-      jsonContent = jsonContent.replace(/^```json\n?/, '').replace(/\n?```$/, '')
-    } else if (jsonContent.startsWith('```')) {
-      jsonContent = jsonContent.replace(/^```\n?/, '').replace(/\n?```$/, '')
+      const result = await model.generateContent(prompt)
+      const response = await result.response
+      const content = response.text()
+      
+      // Try to extract JSON from response (might have markdown code blocks)
+      let jsonContent = content.trim()
+      if (jsonContent.startsWith('```json')) {
+        jsonContent = jsonContent.replace(/^```json\n?/, '').replace(/\n?```$/, '')
+      } else if (jsonContent.startsWith('```')) {
+        jsonContent = jsonContent.replace(/^```\n?/, '').replace(/\n?```$/, '')
+      }
+      
+      const parsed = JSON.parse(jsonContent || '{}')
+      
+      if (Array.isArray(parsed.ingredients)) {
+          ingredients = parsed.ingredients
+      }
+      if (parsed.recipe) {
+          recipe = parsed.recipe
+      }
+      
+      // Save to cache
+      if (ingredients.length > 0 || recipe) {
+        await supabase
+          .from('dish_cache')
+          .upsert({
+            dish_name: dishName,
+            dish_name_lower: dishNameLower,
+            ingredients: ingredients,
+            recipe: recipe,
+            lang: lang,
+            usage_count: 1
+          }, {
+            onConflict: 'dish_name_lower,lang'
+          })
+      }
+    } catch (e) {
+      console.error('AI Generation failed', e)
+      // Don't fail the whole action, just skip AI part
     }
-    
-    const parsed = JSON.parse(jsonContent || '{}')
-    
-    if (Array.isArray(parsed.ingredients)) {
-        ingredients = parsed.ingredients
-    }
-    if (parsed.recipe) {
-        recipe = parsed.recipe
-    }
-  } catch (e) {
-    console.error('AI Generation failed', e)
-    // Don't fail the whole action, just skip AI part
   }
 
   // Update dish with recipe
@@ -382,6 +422,66 @@ Return ONLY valid JSON, no other text.`
         console.error(e)
         return []
     }
+}
+
+// Weekly Plans History
+
+export async function saveWeeklyPlan(weekStartDate: string, dishes: any[]) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const { error } = await supabase
+        .from('weekly_plans')
+        .upsert({
+            couple_id: user.couple_id,
+            week_start_date: weekStartDate,
+            dishes: dishes
+        }, {
+            onConflict: 'couple_id,week_start_date'
+        })
+    
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
+    return { success: true }
+}
+
+export async function getWeeklyPlans() {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) return []
+    
+    const supabase = await createServerSideClient()
+    
+    const { data } = await supabase
+        .from('weekly_plans')
+        .select('*')
+        .eq('couple_id', user.couple_id)
+        .order('week_start_date', { ascending: false })
+        .limit(20) // Last 20 weeks
+    
+    return data || []
+}
+
+export async function loadWeeklyPlan(planId: string) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in')
+    }
+    
+    const supabase = await createServerSideClient()
+    
+    const { data, error } = await supabase
+        .from('weekly_plans')
+        .select('*')
+        .eq('id', planId)
+        .eq('couple_id', user.couple_id)
+        .single()
+    
+    if (error) throw new Error(error.message)
+    return data
 }
 
 // Logout is now handled via API route /api/auth/logout

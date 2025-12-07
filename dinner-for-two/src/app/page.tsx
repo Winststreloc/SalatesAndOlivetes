@@ -4,6 +4,7 @@ import { PairingScreen } from '@/components/PairingScreen'
 import { Dashboard } from '@/components/Dashboard'
 import { Card } from '@/components/ui/card'
 import { useLang } from '@/components/LanguageProvider'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 export default function Home() {
   const { user, coupleId, isLoading } = useAuth()
@@ -29,8 +30,16 @@ export default function Home() {
   }
 
   if (!coupleId) {
-    return <PairingScreen />
+    return (
+      <ErrorBoundary>
+        <PairingScreen />
+      </ErrorBoundary>
+    )
   }
 
-  return <Dashboard />
+  return (
+    <ErrorBoundary>
+      <Dashboard />
+    </ErrorBoundary>
+  )
 }
