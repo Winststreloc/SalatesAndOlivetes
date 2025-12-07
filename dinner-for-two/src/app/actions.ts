@@ -6,6 +6,7 @@ import { getUserFromSession } from '@/utils/auth'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { handleError, createErrorContext } from '@/utils/errorHandler'
 
 // Initialize Google Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
@@ -13,12 +14,22 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
 export async function addDish(dishName: string, dayOfWeek?: number) {
   const user = await getUserFromSession()
   if (!user) {
-    console.error('addDish: No user session')
-    throw new Error('Unauthorized: Please log in')
+    const error = new Error('Unauthorized: Please log in')
+    handleError(error, createErrorContext('addDish', {
+      type: 'AUTH_ERROR',
+      userId: undefined,
+      showToast: false, // Will be handled by caller
+    }))
+    throw error
   }
   if (!user.couple_id) {
-    console.error('addDish: User has no couple_id', user.telegram_id)
-    throw new Error('Unauthorized: Please create or join a couple first')
+    const error = new Error('Unauthorized: Please create or join a couple first')
+    handleError(error, createErrorContext('addDish', {
+      type: 'AUTH_ERROR',
+      userId: String(user.telegram_id),
+      showToast: false, // Will be handled by caller
+    }))
+    throw error
   }
 
   const supabase = await createServerSideClient()
@@ -35,7 +46,17 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
     .select()
     .single()
     
-  if (error) throw new Error(error.message)
+  if (error) {
+    const dbError = new Error(error.message)
+    handleError(dbError, createErrorContext('addDish', {
+      type: 'DATABASE_ERROR',
+      userId: String(user.telegram_id),
+      coupleId: user.couple_id,
+      metadata: { dishName, dayOfWeek },
+      showToast: false,
+    }))
+    throw dbError
+  }
 
   revalidatePath('/')
   return dish
@@ -44,11 +65,18 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
 export async function generateDishIngredients(dishId: string, dishName: string, lang: 'en' | 'ru' = 'ru') {
   const user = await getUserFromSession()
   if (!user) {
-    console.error('generateDishIngredients: No user session')
+    handleError(new Error('No user session'), createErrorContext('generateDishIngredients', {
+      type: 'AUTH_ERROR',
+      showToast: false,
+    }))
     return { success: false }
   }
   if (!user.couple_id) {
-    console.error('generateDishIngredients: User has no couple_id', user.telegram_id)
+    handleError(new Error('User has no couple_id'), createErrorContext('generateDishIngredients', {
+      type: 'AUTH_ERROR',
+      userId: String(user.telegram_id),
+      showToast: false,
+    }))
     return { success: false }
   }
   
@@ -114,8 +142,15 @@ Input: ${dishName}`
       
       // Check if AI returned an error (invalid input)
       if (parsed.error === 'INVALID_INPUT') {
-        console.error('AI validation failed:', parsed.message)
-        throw new Error(parsed.message || (lang === 'ru' ? 'Пожалуйста, введите валидное название блюда (только связанное с едой)' : 'Please enter a valid dish name (food-related only)'))
+        const validationError = new Error(parsed.message || (lang === 'ru' ? 'Пожалуйста, введите валидное название блюда (только связанное с едой)' : 'Please enter a valid dish name (food-related only)'))
+        handleError(validationError, createErrorContext('generateDishIngredients', {
+          type: 'VALIDATION_ERROR',
+          userId: String(user.telegram_id),
+          coupleId: user.couple_id,
+          metadata: { dishName, dishId, lang },
+          showToast: false, // Will be handled by caller
+        }))
+        throw validationError
       }
       
       if (Array.isArray(parsed.ingredients)) {
@@ -141,11 +176,19 @@ Input: ${dishName}`
           })
       }
     } catch (e: any) {
-      console.error('AI Generation failed', e)
       // If it's a validation error, re-throw it to show to user
       if (e.message && (e.message.includes('valid dish name') || e.message.includes('INVALID_INPUT') || e.message.includes('не название блюда') || e.message.includes('not a food-related'))) {
-        throw e
+        throw e // Already logged above
       }
+      
+      // Log other AI errors
+      handleError(e, createErrorContext('generateDishIngredients', {
+        type: 'AI_ERROR',
+        userId: String(user.telegram_id),
+        coupleId: user.couple_id,
+        metadata: { dishName, dishId, lang },
+        showToast: false, // Don't show toast for AI errors, just log
+      }))
       // For other errors, don't fail the whole action, just skip AI part
     }
   }
@@ -265,12 +308,21 @@ export async function toggleDishSelection(dishId: string, isSelected: boolean) {
 export async function moveDish(dishId: string, dayOfWeek: number) {
   const user = await getUserFromSession()
   if (!user) {
-    console.error('moveDish: No user session')
-    throw new Error('Unauthorized: Please log in')
+    const error = new Error('Unauthorized: Please log in')
+    handleError(error, createErrorContext('moveDish', {
+      type: 'AUTH_ERROR',
+      showToast: false,
+    }))
+    throw error
   }
   if (!user.couple_id) {
-    console.error('moveDish: User has no couple_id', user.telegram_id)
-    throw new Error('Unauthorized: Please create or join a couple first')
+    const error = new Error('Unauthorized: Please create or join a couple first')
+    handleError(error, createErrorContext('moveDish', {
+      type: 'AUTH_ERROR',
+      userId: String(user.telegram_id),
+      showToast: false,
+    }))
+    throw error
   }
   
   const supabase = await createServerSideClient()
@@ -281,7 +333,17 @@ export async function moveDish(dishId: string, dayOfWeek: number) {
     .eq('id', dishId)
     .eq('couple_id', user.couple_id)
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    const dbError = new Error(error.message)
+    handleError(dbError, createErrorContext('moveDish', {
+      type: 'DATABASE_ERROR',
+      userId: String(user.telegram_id),
+      coupleId: user.couple_id,
+      metadata: { dishId, dayOfWeek },
+      showToast: false,
+    }))
+    throw dbError
+  }
     
   revalidatePath('/')
 }
@@ -289,12 +351,21 @@ export async function moveDish(dishId: string, dayOfWeek: number) {
 export async function toggleIngredientsPurchased(ingredientIds: string[], isPurchased: boolean) {
    const user = await getUserFromSession()
    if (!user) {
-     console.error('toggleIngredientsPurchased: No user session')
-     throw new Error('Unauthorized: Please log in')
+     const error = new Error('Unauthorized: Please log in')
+     handleError(error, createErrorContext('toggleIngredientsPurchased', {
+       type: 'AUTH_ERROR',
+       showToast: false,
+     }))
+     throw error
    }
    if (!user.couple_id) {
-     console.error('toggleIngredientsPurchased: User has no couple_id', user.telegram_id)
-     throw new Error('Unauthorized: Please create or join a couple first')
+     const error = new Error('Unauthorized: Please create or join a couple first')
+     handleError(error, createErrorContext('toggleIngredientsPurchased', {
+       type: 'AUTH_ERROR',
+       userId: String(user.telegram_id),
+       showToast: false,
+     }))
+     throw error
    }
 
    const supabase = await createServerSideClient()
@@ -313,7 +384,17 @@ export async function toggleIngredientsPurchased(ingredientIds: string[], isPurc
        .in('id', ingredientIds)
        .eq('couple_id', user.couple_id)
      
-     if (manualError) throw new Error(manualError.message)
+     if (manualError) {
+       const dbError = new Error(manualError.message)
+       handleError(dbError, createErrorContext('toggleIngredientsPurchased', {
+         type: 'DATABASE_ERROR',
+         userId: String(user.telegram_id),
+         coupleId: user.couple_id,
+         metadata: { ingredientIds, isPurchased },
+         showToast: false,
+       }))
+       throw dbError
+     }
    }
    
    revalidatePath('/')
@@ -322,23 +403,42 @@ export async function toggleIngredientsPurchased(ingredientIds: string[], isPurc
 export async function deleteDish(dishId: string) {
     const user = await getUserFromSession()
     if (!user) {
-      console.error('deleteDish: No user session')
-      throw new Error('Unauthorized: Please log in')
+      const error = new Error('Unauthorized: Please log in')
+      handleError(error, createErrorContext('deleteDish', {
+        type: 'AUTH_ERROR',
+        showToast: false,
+      }))
+      throw error
     }
     if (!user.couple_id) {
-      console.error('deleteDish: User has no couple_id', user.telegram_id)
-      throw new Error('Unauthorized: Please create or join a couple first')
+      const error = new Error('Unauthorized: Please create or join a couple first')
+      handleError(error, createErrorContext('deleteDish', {
+        type: 'AUTH_ERROR',
+        userId: String(user.telegram_id),
+        showToast: false,
+      }))
+      throw error
     }
     
     const supabase = await createServerSideClient()
-
+    
     const { error } = await supabase
       .from('dishes')
       .delete()
       .eq('id', dishId)
       .eq('couple_id', user.couple_id)
       
-    if (error) throw new Error(error.message)
+    if (error) {
+      const dbError = new Error(error.message)
+      handleError(dbError, createErrorContext('deleteDish', {
+        type: 'DATABASE_ERROR',
+        userId: String(user.telegram_id),
+        coupleId: user.couple_id,
+        metadata: { dishId },
+        showToast: false,
+      }))
+      throw dbError
+    }
     
     revalidatePath('/')
 }

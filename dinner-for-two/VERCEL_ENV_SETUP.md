@@ -25,6 +25,14 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GOOGLE_API_KEY=your_google_api_key
 ```
 
+### 4. Sentry (Optional but Recommended for Error Monitoring)
+```
+NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
+SENTRY_ORG=your_sentry_org_slug
+SENTRY_PROJECT=your_sentry_project_slug
+SENTRY_AUTH_TOKEN=your_sentry_auth_token (optional, for source maps upload)
+```
+
 ## Как проверить в Vercel:
 
 1. Откройте ваш проект в [Vercel Dashboard](https://vercel.com)

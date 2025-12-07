@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { addDish, generateDishIngredients, deleteDish } from '@/app/actions'
+import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLang } from './LanguageProvider'
@@ -54,11 +55,16 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
       })
       
     } catch (e: any) {
-      console.error('Failed to add dish:', e)
       // Show specific error message if validation failed
       const errorMessage = e.message?.includes('valid dish name') 
         ? (t.invalidDishName || 'Please enter a valid dish name (food-related only)')
         : t.failedAdd
+      
+      handleError(e, createErrorContext('addDish', {
+        metadata: { dishName: name, day },
+        showToast: false, // We show custom toast
+      }))
+      
       showToast.error(errorMessage)
     } finally {
       setLoading(false)
