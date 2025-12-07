@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useLang } from './LanguageProvider'
 import { Calendar, Save, Loader2, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { showToast } from '@/utils/toast'
+import { ConfirmDialog } from './ConfirmDialog'
 
 export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[], onLoadWeek: (dishes: any[]) => void }) {
   const { t } = useLang()
@@ -34,7 +36,7 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
 
   const handleSaveWeek = async () => {
     if (currentDishes.length === 0) {
-      alert('No dishes to save')
+      showToast.warning('No dishes to save')
       return
     }
 
@@ -50,10 +52,10 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
       // Save dishes with full data
       await saveWeeklyPlan(weekStart, currentDishes)
       await loadPlans()
-      alert('Week saved successfully!')
+      showToast.success('Week saved successfully!')
     } catch (e: any) {
       console.error('Failed to save week:', e)
-      alert(e.message || 'Failed to save week')
+      showToast.error(e.message || 'Failed to save week')
     } finally {
       setSaving(false)
     }
@@ -72,22 +74,30 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
       onLoadWeek(planData.dishes || [])
       setShowConfirm(false)
       setSelectedPlan(null)
-      alert('Week loaded successfully!')
+      showToast.success('Week loaded successfully!')
     } catch (e: any) {
       console.error('Failed to load week:', e)
-      alert(e.message || 'Failed to load week')
+      showToast.error(e.message || 'Failed to load week')
     }
   }
 
   const handleDeleteWeek = async (planId: string) => {
-    if (!confirm(t.deleteWeekConfirm)) return
+    setPlanToDelete(planId)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDeleteWeek = async () => {
+    if (!planToDelete) return
     
     try {
-      await deleteWeeklyPlan(planId)
+      await deleteWeeklyPlan(planToDelete)
       await loadPlans()
+      setShowDeleteConfirm(false)
+      setPlanToDelete(null)
+      showToast.success(t.deleteSuccess || 'Week deleted successfully')
     } catch (e: any) {
       console.error('Failed to delete week:', e)
-      alert(e.message || 'Failed to delete week')
+      showToast.error(e.message || 'Failed to delete week')
     }
   }
 
@@ -169,6 +179,15 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={confirmDeleteWeek}
+        title={t.deleteWeek || 'Delete'}
+        description={t.deleteWeekConfirm || 'Are you sure you want to delete this week?'}
+        variant="destructive"
+      />
     </div>
   )
 }

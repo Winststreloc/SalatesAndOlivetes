@@ -8,6 +8,9 @@ import { IdeasTab } from './IdeasTab'
 import { RecipeView } from './RecipeView'
 import { HistoryView } from './HistoryView'
 import { IngredientForm } from './IngredientForm'
+import { ConfirmDialog } from './ConfirmDialog'
+import { FloatingActionButton } from './FloatingActionButton'
+import { GlobalSearch } from './GlobalSearch'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -20,6 +23,11 @@ import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, 
 import { groupByCategory, IngredientCategory, CategorizedIngredient } from '@/utils/ingredientCategories'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
+import { showToast } from '@/utils/toast'
+import { useSwipeable } from 'react-swipeable'
+import { DishSkeleton } from './LoadingStates'
+import { Skeleton } from '@/components/ui/skeleton'
+import { triggerHaptic } from '@/utils/haptics'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -41,14 +49,22 @@ export function Dashboard() {
   const [editingIngredient, setEditingIngredient] = useState<{ id: string, type: 'dish' | 'manual', name: string, amount: string, unit: string } | null>(null)
   const [showAddIngredient, setShowAddIngredient] = useState(false)
   const [hasPartnerUser, setHasPartnerUser] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean, title: string, description: string, onConfirm: () => void } | null>(null)
+  const [isLoadingDishes, setIsLoadingDishes] = useState(true)
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const channelRef = useRef<any>(null)
   
   const refreshDishes = async () => {
-    const data = await getDishes()
-    setDishes(data)
-    setLastUpdate(new Date())
-    // Also check for partner when refreshing dishes
-    await checkHasPartner()
+    setIsLoadingDishes(true)
+    try {
+      const data = await getDishes()
+      setDishes(data)
+      setLastUpdate(new Date())
+      // Also check for partner when refreshing dishes
+      await checkHasPartner()
+    } finally {
+      setIsLoadingDishes(false)
+    }
   }
 
   const loadInviteCode = async () => {
@@ -151,16 +167,24 @@ export function Dashboard() {
   }
   
   const handleDeleteDish = async (id: string) => {
-      if (!confirm('Are you sure?')) return
-      try {
-        setDishes(prev => prev.filter(d => d.id !== id))
-        await deleteDish(id)
-      } catch (e: any) {
-        console.error('Failed to delete dish:', e)
-        // Revert optimistic update
-        refreshDishes()
-        alert(e.message || 'Failed to delete dish')
-      }
+      setConfirmDialog({
+        open: true,
+        title: t.delete || 'Delete',
+        description: t.deleteDishConfirm || 'Are you sure you want to delete this dish?',
+        onConfirm: async () => {
+          setConfirmDialog(null)
+          try {
+            setDishes(prev => prev.filter(d => d.id !== id))
+            await deleteDish(id)
+            showToast.success(t.deleteSuccess || 'Dish deleted successfully')
+          } catch (e: any) {
+            console.error('Failed to delete dish:', e)
+            // Revert optimistic update
+            refreshDishes()
+            showToast.error(e.message || 'Failed to delete dish')
+          }
+        }
+      })
   }
   
   const handleShare = () => {
@@ -185,7 +209,7 @@ export function Dashboard() {
     
     try {
         await navigator.clipboard.writeText(inviteLink)
-        alert(t.copied)
+        showToast.success(t.copied)
     } catch (e) {
         // Fallback for older browsers
         const textArea = document.createElement('textarea')
@@ -194,7 +218,7 @@ export function Dashboard() {
         textArea.select()
         document.execCommand('copy')
         document.body.removeChild(textArea)
-        alert(t.copied)
+        showToast.success(t.copied)
     }
   }
 
@@ -231,9 +255,10 @@ export function Dashboard() {
           })
           
           setTab('plan')
-      } catch (e) {
+          showToast.success(t.addSuccess || 'Dish added successfully')
+      } catch (e: any) {
           console.error('Failed to add dish:', e)
-          alert(t.failedAdd || 'Failed to add dish')
+          showToast.error(t.failedAdd || 'Failed to add dish')
       }
   }
 
@@ -456,31 +481,38 @@ export function Dashboard() {
       console.error('Failed to toggle ingredient:', e)
       refreshDishes()
       loadManualIngredients()
-      alert(e.message || 'Failed to update ingredient')
+      showToast.error(e.message || 'Failed to update ingredient')
     }
   }
 
   const handleDeleteIngredient = async (item: any) => {
-    if (!confirm('Are you sure you want to delete this ingredient?')) return
-    
-    try {
-      // Delete from dish ingredients
-      if (item.ids.length > 0) {
-        for (const id of item.ids) {
-          await deleteIngredient(id)
+    setConfirmDialog({
+      open: true,
+      title: t.deleteIngredient || 'Delete Ingredient',
+      description: t.deleteIngredientConfirm || 'Are you sure you want to delete this ingredient?',
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          // Delete from dish ingredients
+          if (item.ids.length > 0) {
+            for (const id of item.ids) {
+              await deleteIngredient(id)
+            }
+            await refreshDishes()
+          }
+          
+          // Delete manual ingredient
+          if (item.manualId) {
+            await deleteManualIngredient(item.manualId)
+            await loadManualIngredients()
+          }
+          showToast.success(t.deleteIngredientSuccess || 'Ingredient deleted successfully')
+        } catch (e: any) {
+          console.error('Failed to delete ingredient:', e)
+          showToast.error(e.message || 'Failed to delete ingredient')
         }
-        await refreshDishes()
       }
-      
-      // Delete manual ingredient
-      if (item.manualId) {
-        await deleteManualIngredient(item.manualId)
-        await loadManualIngredients()
-      }
-    } catch (e: any) {
-      console.error('Failed to delete ingredient:', e)
-      alert(e.message || 'Failed to delete ingredient')
-    }
+    })
   }
 
   const handleAddManualIngredient = async (name: string, amount: string, unit: string) => {
@@ -488,9 +520,10 @@ export function Dashboard() {
       await addManualIngredient(name, amount, unit)
       await loadManualIngredients()
       setShowAddIngredient(false)
+      showToast.success(t.addIngredientSuccess || 'Ingredient added successfully')
     } catch (e: any) {
       console.error('Failed to add ingredient:', e)
-      alert(e.message || 'Failed to add ingredient')
+      showToast.error(e.message || 'Failed to add ingredient')
     }
   }
 
@@ -511,9 +544,10 @@ export function Dashboard() {
       }
       
       setEditingIngredient(null)
+      showToast.success(t.updateIngredientSuccess || 'Ingredient updated successfully')
     } catch (e: any) {
       console.error('Failed to update ingredient:', e)
-      alert(e.message || 'Failed to update ingredient')
+      showToast.error(e.message || 'Failed to update ingredient')
     }
   }
   
@@ -560,7 +594,7 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-background relative">
-       <div className="flex justify-between p-3 bg-card border-b border-border items-center shadow-sm z-10">
+                 <div className="flex justify-between p-3 bg-card border-b border-border items-center shadow-sm z-10 safe-area-inset-top">
          <div className="flex items-center space-x-2">
              <Button variant="ghost" size="icon" onClick={() => setShowInvite(!showInvite)}>
                 <Key className="h-4 w-4" />
@@ -583,10 +617,16 @@ export function Dashboard() {
              <Button variant="ghost" size="icon" onClick={toggleTheme}>
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
              </Button>
-             <Button variant="ghost" size="icon" onClick={async () => {
-                if (confirm(t.logoutConfirm || 'Are you sure you want to leave the couple? You will need to create or join a new couple.')) {
+             <Button variant="ghost" size="icon" onClick={() => {
+                setConfirmDialog({
+                  open: true,
+                  title: t.logout || 'Logout',
+                  description: t.logoutConfirm || 'Are you sure you want to leave the couple? You will need to create or join a new couple.',
+                  onConfirm: async () => {
+                    setConfirmDialog(null)
                     await logout()
-                }
+                  }
+                })
              }}>
                 <LogOut className="h-4 w-4 text-red-400" />
              </Button>
@@ -627,6 +667,28 @@ export function Dashboard() {
        )}
        
        <RecipeView dish={selectedDish} isOpen={!!selectedDish} onClose={() => setSelectedDish(null)} />
+
+       <GlobalSearch
+         dishes={dishes}
+         ingredients={shoppingList}
+         onSelectDish={(dish) => {
+           setSelectedDish(dish)
+           setTab('plan')
+         }}
+         isOpen={showGlobalSearch}
+         onClose={() => setShowGlobalSearch(false)}
+       />
+
+       {confirmDialog && (
+         <ConfirmDialog
+           open={confirmDialog.open}
+           onOpenChange={(open) => !open && setConfirmDialog(null)}
+           onConfirm={confirmDialog.onConfirm}
+           title={confirmDialog.title}
+           description={confirmDialog.description}
+           variant="destructive"
+         />
+       )}
 
        {/* Day Selector Modal */}
        {showDaySelector && (
@@ -678,6 +740,21 @@ export function Dashboard() {
           )}
 
           {tab === 'plan' && (
+            isLoadingDishes ? (
+              <div className="space-y-6">
+                {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => (
+                  <div key={dayIndex} className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+                    <div className="bg-muted p-3 font-semibold text-foreground">
+                      <Skeleton className="h-5 w-24" />
+                    </div>
+                    <div className="p-2 space-y-2">
+                      <DishSkeleton />
+                      <DishSkeleton />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="space-y-6">
                    {orderedDays.map(dayIndex => (
@@ -696,13 +773,34 @@ export function Dashboard() {
                                    </div>
                                    
                                    <div className="p-2 space-y-2 min-h-[50px]">
-                                       {dishesByDay[dayIndex].map((dish, index) => (
+                                       {dishesByDay[dayIndex].map((dish, index) => {
+                                           const swipeHandlers = useSwipeable({
+                                             onSwipedLeft: () => {
+                                               handleDeleteDish(dish.id)
+                                             },
+                                             onSwipedRight: () => {
+                                               if (dish.status === 'proposed' && ((dish.created_by !== user?.id && hasPartnerUser) || (dish.created_by === user?.id && !hasPartnerUser))) {
+                                                 handleToggleDish(dish.id, dish.status)
+                                               }
+                                             },
+                                             trackMouse: false,
+                                             trackTouch: true,
+                                             preventScrollOnSwipe: true
+                                           })
+                                           
+                                           return (
                                            <Draggable key={dish.id} draggableId={dish.id} index={index}>
                                                {(provided: any) => (
                                                    <div
-                                                       ref={provided.innerRef}
+                                                       ref={(el) => {
+                                                         provided.innerRef(el)
+                                                         if (swipeHandlers.ref) {
+                                                           swipeHandlers.ref(el)
+                                                         }
+                                                       }}
                                                        {...provided.draggableProps}
                                                        {...provided.dragHandleProps}
+                                                       {...Object.fromEntries(Object.entries(swipeHandlers).filter(([key]) => key !== 'ref'))}
                                                        className={`border border-border rounded p-3 relative group bg-card ${dish.status === 'proposed' ? 'border-dashed border-orange-300' : 'border-green-500'}`}
                                                        style={{ ...provided.draggableProps.style }}
                                                    >
@@ -744,7 +842,7 @@ export function Dashboard() {
                                                                )}
                                                                <button 
                                                                   onClick={() => handleDeleteDish(dish.id)}
-                                                                  className="text-muted-foreground hover:text-red-500"
+                                                                  className="text-muted-foreground hover:text-red-500 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
                                                                   onPointerDown={(e) => e.stopPropagation()}
                                                                >
                                                                    <Trash2 className="h-4 w-4" />
@@ -766,7 +864,8 @@ export function Dashboard() {
                                                    </div>
                                                )}
                                            </Draggable>
-                                       ))}
+                                           )
+                                       })}
                                        {provided.placeholder}
                                        
                                        {addingDay === dayIndex ? (
@@ -804,6 +903,7 @@ export function Dashboard() {
                    ))}
                 </div>
             </DragDropContext>
+            )
           )}
 
           {tab === 'list' && (
@@ -988,14 +1088,14 @@ export function Dashboard() {
                                  <div className="flex gap-1 ml-2">
                                    <button
                                      onClick={() => setEditingIngredient({ id: String(idx), type: item.isManual ? 'manual' : 'dish', name: item.name, amount: String(item.amount), unit: item.unit })}
-                                     className="text-muted-foreground hover:text-blue-500 p-1"
+                                     className="text-muted-foreground hover:text-blue-500 p-2 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
                                      title={t.editIngredient}
                                    >
                                      <Edit2 className="w-4 h-4" />
                                    </button>
                                    <button
                                      onClick={() => handleDeleteIngredient(item)}
-                                     className="text-muted-foreground hover:text-red-500 p-1"
+                                     className="text-muted-foreground hover:text-red-500 p-2 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
                                      title={t.deleteIngredient}
                                    >
                                      <Trash2 className="w-4 h-4" />
@@ -1055,6 +1155,16 @@ export function Dashboard() {
             </Button>
           </div>
        </div>
+
+       {/* Floating Action Button */}
+       <FloatingActionButton onClick={() => {
+         // Find first day without dishes or current day
+         const today = new Date().getDay()
+         const currentDayIndex = today === 0 ? 6 : today - 1
+         const firstEmptyDay = orderedDays.find(dayIndex => dishesByDay[dayIndex].length === 0) ?? currentDayIndex
+         setAddingDay(firstEmptyDay)
+         setTab('plan')
+       }} />
     </div>
   )
 }

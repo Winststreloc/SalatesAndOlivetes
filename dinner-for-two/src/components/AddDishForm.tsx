@@ -5,6 +5,7 @@ import { addDish, generateDishIngredients } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLang } from './LanguageProvider'
+import { showToast } from '@/utils/toast'
 
 export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: (dish?: any) => void, onCancel: () => void }) {
   const { t, lang } = useLang()
@@ -29,9 +30,9 @@ export function AddDishForm({ day, onAdded, onCancel }: { day: number, onAdded: 
         console.error('Failed to generate ingredients:', err)
       })
       
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to add dish:', e)
-      alert(t.failedAdd)
+      showToast.error(t.failedAdd)
     } finally {
       setLoading(false)
     }

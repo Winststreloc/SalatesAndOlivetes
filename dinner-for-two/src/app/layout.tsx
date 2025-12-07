@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { Toaster } from "sonner";
 import Script from "next/script";
 
 const geistSans = Geist({
@@ -55,6 +56,7 @@ export default function RootLayout({
           <LanguageProvider>
             <AuthProvider>
               {children}
+              <Toaster position="top-center" richColors />
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>

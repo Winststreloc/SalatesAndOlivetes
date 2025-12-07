@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Share2 } from 'lucide-react'
+import { showToast } from '@/utils/toast'
 
 export function PairingScreen() {
   const { createCouple, joinCouple } = useAuth()
@@ -38,7 +39,7 @@ export function PairingScreen() {
     try {
         await joinCouple(inviteCode)
     } catch (e) {
-        alert(t.invalidCode)
+        showToast.error(t.invalidCode)
     }
   }
 
@@ -63,7 +64,7 @@ export function PairingScreen() {
     
     try {
         await navigator.clipboard.writeText(inviteLink)
-        alert(t.copied)
+        showToast.success(t.copied)
     } catch (e) {
         // Fallback for older browsers
         const textArea = document.createElement('textarea')
@@ -72,7 +73,7 @@ export function PairingScreen() {
         textArea.select()
         document.execCommand('copy')
         document.body.removeChild(textArea)
-        alert(t.copied)
+        showToast.success(t.copied)
     }
   }
 
