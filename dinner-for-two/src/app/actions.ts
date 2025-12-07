@@ -12,7 +12,14 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
 
 export async function addDish(dishName: string, dayOfWeek?: number) {
   const user = await getUserFromSession()
-  if (!user || !user.couple_id) throw new Error('Unauthorized')
+  if (!user) {
+    console.error('addDish: No user session')
+    throw new Error('Unauthorized: Please log in')
+  }
+  if (!user.couple_id) {
+    console.error('addDish: User has no couple_id', user.telegram_id)
+    throw new Error('Unauthorized: Please create or join a couple first')
+  }
 
   const supabase = await createServerSideClient()
 
@@ -35,7 +42,14 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
 
 export async function generateDishIngredients(dishId: string, dishName: string, lang: 'en' | 'ru' = 'ru') {
   const user = await getUserFromSession()
-  if (!user || !user.couple_id) throw new Error('Unauthorized')
+  if (!user) {
+    console.error('generateDishIngredients: No user session')
+    return { success: false }
+  }
+  if (!user.couple_id) {
+    console.error('generateDishIngredients: User has no couple_id', user.telegram_id)
+    return { success: false }
+  }
   
   const supabase = await createServerSideClient()
   
@@ -123,7 +137,14 @@ export async function getDishes() {
 
 export async function toggleDishSelection(dishId: string, isSelected: boolean) {
   const user = await getUserFromSession()
-  if (!user || !user.couple_id) throw new Error('Unauthorized')
+  if (!user) {
+    console.error('toggleDishSelection: No user session')
+    throw new Error('Unauthorized: Please log in')
+  }
+  if (!user.couple_id) {
+    console.error('toggleDishSelection: User has no couple_id', user.telegram_id)
+    throw new Error('Unauthorized: Please create or join a couple first')
+  }
   
   const supabase = await createServerSideClient()
   
@@ -140,7 +161,14 @@ export async function toggleDishSelection(dishId: string, isSelected: boolean) {
 
 export async function moveDish(dishId: string, dayOfWeek: number) {
   const user = await getUserFromSession()
-  if (!user || !user.couple_id) throw new Error('Unauthorized')
+  if (!user) {
+    console.error('moveDish: No user session')
+    throw new Error('Unauthorized: Please log in')
+  }
+  if (!user.couple_id) {
+    console.error('moveDish: User has no couple_id', user.telegram_id)
+    throw new Error('Unauthorized: Please create or join a couple first')
+  }
   
   const supabase = await createServerSideClient()
   
@@ -157,7 +185,14 @@ export async function moveDish(dishId: string, dayOfWeek: number) {
 
 export async function toggleIngredientsPurchased(ingredientIds: string[], isPurchased: boolean) {
    const user = await getUserFromSession()
-   if (!user || !user.couple_id) throw new Error('Unauthorized')
+   if (!user) {
+     console.error('toggleIngredientsPurchased: No user session')
+     throw new Error('Unauthorized: Please log in')
+   }
+   if (!user.couple_id) {
+     console.error('toggleIngredientsPurchased: User has no couple_id', user.telegram_id)
+     throw new Error('Unauthorized: Please create or join a couple first')
+   }
 
    const supabase = await createServerSideClient()
    const { error } = await supabase.from('ingredients').update({ is_purchased: isPurchased }).in('id', ingredientIds)
@@ -169,7 +204,14 @@ export async function toggleIngredientsPurchased(ingredientIds: string[], isPurc
 
 export async function deleteDish(dishId: string) {
     const user = await getUserFromSession()
-    if (!user || !user.couple_id) throw new Error('Unauthorized')
+    if (!user) {
+      console.error('deleteDish: No user session')
+      throw new Error('Unauthorized: Please log in')
+    }
+    if (!user.couple_id) {
+      console.error('deleteDish: User has no couple_id', user.telegram_id)
+      throw new Error('Unauthorized: Please create or join a couple first')
+    }
     
     const supabase = await createServerSideClient()
 
@@ -202,7 +244,10 @@ export async function getInviteCode() {
 
 export async function updatePreferences(prefs: any) {
     const user = await getUserFromSession()
-    if (!user) throw new Error('Unauthorized')
+    if (!user) {
+      console.error('updatePreferences: No user session')
+      throw new Error('Unauthorized: Please log in')
+    }
     
     const supabase = await createServerSideClient()
     const { error } = await supabase
@@ -230,7 +275,10 @@ export async function getPreferences() {
 
 export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {
     const user = await getUserFromSession()
-    if (!user) throw new Error('Unauthorized')
+    if (!user) {
+      console.error('generateIdeas: No user session')
+      return []
+    }
     
     const supabase = await createServerSideClient()
     const { data } = await supabase
