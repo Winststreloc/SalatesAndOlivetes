@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getDishes, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner } from '@/app/actions'
+import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
@@ -146,21 +146,63 @@ export function Dashboard() {
                 
                 // Optimistic updates based on event type
                 if (payload.eventType === 'INSERT') {
-                    // New dish added - refresh to get full data with ingredients
-                    setTimeout(() => safeUpdate(() => refreshDishes()), 100)
+                    // New dish added - fetch only this dish with ingredients
+                    const newDishId = (payload.new as any).id
+                    if (newDishId) {
+                      getDish(newDishId).then(dish => {
+                        if (dish && isMountedRef.current) {
+                          safeUpdate(() => {
+                            setDishes(prev => {
+                              // Check if dish already exists (avoid duplicates)
+                              if (prev.some(d => d.id === dish.id)) {
+                                return prev.map(d => d.id === dish.id ? dish : d)
+                              }
+                              return [...prev, dish]
+                            })
+                          })
+                        }
+                      }).catch(err => {
+                        console.error('Failed to fetch new dish:', err)
+                      })
+                    }
                 } else if (payload.eventType === 'UPDATE') {
                     // Dish updated - update local state immediately
-                    safeUpdate(() => {
-                      if (!isMountedRef.current) return
-                      setDishes(prev => {
-                        if (!isMountedRef.current) return prev
-                        return prev.map(d => 
-                            d.id === payload.new.id ? { ...d, ...payload.new } : d
-                        )
-                      })
-                    })
-                    // Then refresh to get related ingredients
-                    setTimeout(() => safeUpdate(() => refreshDishes()), 100)
+                    const updatedDishId = (payload.new as any).id
+                    if (updatedDishId) {
+                      // Check if recipe or status changed (might affect ingredients)
+                      const hasRecipeChange = (payload.new as any).recipe !== undefined
+                      const hasStatusChange = (payload.new as any).status !== undefined
+                      
+                      if (hasRecipeChange || hasStatusChange) {
+                        // Fetch full dish to get updated ingredients
+                        getDish(updatedDishId).then(dish => {
+                          if (dish && isMountedRef.current) {
+                            safeUpdate(() => {
+                              setDishes(prev => prev.map(d => d.id === dish.id ? dish : d))
+                            })
+                          }
+                        }).catch(err => {
+                          console.error('Failed to fetch updated dish:', err)
+                          // Fallback to simple update
+                          safeUpdate(() => {
+                            setDishes(prev => prev.map(d => 
+                              d.id === updatedDishId ? { ...d, ...(payload.new as any) } : d
+                            ))
+                          })
+                        })
+                      } else {
+                        // Simple field update, no need to fetch
+                        safeUpdate(() => {
+                          if (!isMountedRef.current) return
+                          setDishes(prev => {
+                            if (!isMountedRef.current) return prev
+                            return prev.map(d => 
+                              d.id === updatedDishId ? { ...d, ...(payload.new as any) } : d
+                            )
+                          })
+                        })
+                      }
+                    }
                 } else if (payload.eventType === 'DELETE') {
                     // Dish deleted - remove from local state
                     // Skip if we're already deleting this dish (optimistic update already handled it)
@@ -196,8 +238,19 @@ export function Dashboard() {
             },
             (payload) => {
                 console.log('🔔 Realtime ingredients update:', payload.eventType, payload)
-                // Ingredients changed - refresh dishes to get updated ingredient lists
-                setTimeout(() => safeUpdate(() => refreshDishes()), 100)
+                // Ingredients changed - update only the affected dish
+                const dishId = (payload.new as any)?.dish_id || (payload.old as any)?.dish_id
+                if (dishId) {
+                  getDish(dishId).then(dish => {
+                    if (dish && isMountedRef.current) {
+                      safeUpdate(() => {
+                        setDishes(prev => prev.map(d => d.id === dish.id ? dish : d))
+                      })
+                    }
+                  }).catch(err => {
+                    console.error('Failed to fetch dish with updated ingredients:', err)
+                  })
+                }
             }
         )
         .on(
@@ -210,8 +263,40 @@ export function Dashboard() {
             },
             (payload) => {
                 console.log('🔔 Realtime manual ingredients update:', payload.eventType, payload)
-                // Manual ingredients changed - refresh
-                setTimeout(() => safeUpdate(() => loadManualIngredients()), 100)
+                // Manual ingredients changed - update only the changed item
+                if (payload.eventType === 'INSERT') {
+                  // Add new manual ingredient
+                  const newIngredient = payload.new as any
+                  if (newIngredient?.id) {
+                    safeUpdate(() => {
+                      setManualIngredients(prev => {
+                        // Check if already exists
+                        if (prev.some(ing => ing.id === newIngredient.id)) {
+                          return prev.map(ing => ing.id === newIngredient.id ? newIngredient : ing)
+                        }
+                        return [...prev, newIngredient]
+                      })
+                    })
+                  }
+                } else if (payload.eventType === 'UPDATE') {
+                  // Update existing manual ingredient
+                  const updatedIngredient = payload.new as any
+                  if (updatedIngredient?.id) {
+                    safeUpdate(() => {
+                      setManualIngredients(prev => prev.map(ing => 
+                        ing.id === updatedIngredient.id ? { ...ing, ...updatedIngredient } : ing
+                      ))
+                    })
+                  }
+                } else if (payload.eventType === 'DELETE') {
+                  // Remove manual ingredient
+                  const deletedId = (payload.old as any)?.id
+                  if (deletedId) {
+                    safeUpdate(() => {
+                      setManualIngredients(prev => prev.filter(ing => ing.id !== deletedId))
+                    })
+                  }
+                }
             }
         )
         .subscribe((status) => {

@@ -191,6 +191,22 @@ export async function getDishes() {
   return data || []
 }
 
+export async function getDish(dishId: string) {
+  const user = await getUserFromSession()
+  if (!user || !user.couple_id) return null
+
+  const supabase = await createServerSideClient()
+  
+  const { data } = await supabase
+    .from('dishes')
+    .select('*, ingredients(*)')
+    .eq('id', dishId)
+    .eq('couple_id', user.couple_id)
+    .single()
+    
+  return data
+}
+
 export async function hasPartner() {
   const user = await getUserFromSession()
   if (!user || !user.couple_id) return false
