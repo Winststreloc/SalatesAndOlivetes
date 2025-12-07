@@ -20,7 +20,7 @@ export async function addDish(dishName: string) {
   
   try {
     // Using gemini-2.0-flash-exp as requested
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `
       You are a chef. 
       Generate a JSON object with a key 'ingredients' containing a list of ingredients for the dish "${dishName}". 
