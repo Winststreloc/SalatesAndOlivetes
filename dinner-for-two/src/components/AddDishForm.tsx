@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useLang } from './LanguageProvider'
 import { showToast } from '@/utils/toast'
+import { logger } from '@/utils/logger'
 
 export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number, onAdded: (dish?: any) => void, onCancel: () => void, onRemove?: (dishId: string) => void }) {
   const { t, lang } = useLang()
@@ -27,8 +28,16 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
       onAdded(dish) 
       
       // 2. Async generate with LANGUAGE 
+      logger.info('Starting ingredient generation', {
+        dishId: dish.id,
+        dishName: dish.name,
+        lang
+      })
       await generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
-        console.error('Failed to generate ingredients:', err)
+        logger.error('Failed to generate ingredients', err, {
+          dishId: dish.id,
+          dishName: dish.name
+        })
         const errorMessage = err?.message || ''
         const isValidationError = errorMessage.includes('valid dish name') || 
                                   errorMessage.includes('INVALID_INPUT') || 

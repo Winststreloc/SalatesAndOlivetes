@@ -288,29 +288,49 @@ export function Dashboard() {
                 // Note: We can't filter directly on ingredients, so we refresh dishes
             },
             (payload) => {
+                // Log full payload structure for debugging
                 logger.info('🔔 Realtime ingredients event received', {
                   eventType: payload.eventType,
                   dishId: (payload.new as any)?.dish_id || (payload.old as any)?.dish_id,
                   ingredientId: (payload.new as any)?.id || (payload.old as any)?.id,
-                  fullPayload: payload
+                  ingredientName: (payload.new as any)?.name || (payload.old as any)?.name,
+                  newData: payload.new,
+                  oldData: payload.old,
+                  fullPayload: JSON.stringify(payload, null, 2)
                 })
+                
                 // Ingredients changed - update only the affected dish
                 const dishId = (payload.new as any)?.dish_id || (payload.old as any)?.dish_id
-                if (dishId && isMountedRef.current) {
+                
+                if (!dishId) {
+                  logger.warn('Realtime ingredients event has no dishId', {
+                    eventType: payload.eventType,
+                    payload: payload
+                  })
+                  return
+                }
+                
+                if (isMountedRef.current) {
                   const currentMounted = isMountedRef.current
-                  logger.debug('Fetching updated dish with ingredients', { dishId })
+                  logger.debug('Fetching updated dish with ingredients', { 
+                    dishId,
+                    eventType: payload.eventType 
+                  })
                   getDish(dishId).then(dish => {
                     if (!currentMounted || !isMountedRef.current) return
                     if (dish) {
                       logger.info('Dish updated with new ingredients', {
                         dishId: dish.id,
                         dishName: dish.name,
-                        ingredientsCount: dish.ingredients?.length || 0
+                        ingredientsCount: dish.ingredients?.length || 0,
+                        eventType: payload.eventType
                       })
                       setDishes(prev => {
                         if (!isMountedRef.current) return prev
                         return prev.map(d => d.id === dish.id ? dish : d)
                       })
+                    } else {
+                      logger.warn('Dish not found after ingredients update', { dishId })
                     }
                   }).catch(err => {
                     logger.error('Failed to fetch dish with updated ingredients', err, { dishId })
