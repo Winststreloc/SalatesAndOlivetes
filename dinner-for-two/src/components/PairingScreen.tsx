@@ -52,13 +52,17 @@ export function PairingScreen() {
     }
   }
 
+  const buildInviteLink = (code: string) => {
+    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+    // Use Telegram deep link to bot with start param so the bot receives the code
+    if (botUsername) return `https://t.me/${botUsername}?start=${code}`
+    // Fallback: plain URL with invite query (for local dev)
+    return `${appUrl}?invite=${code}`
+  }
+
   const handleShare = () => {
     if (!createdCode) return
-    // Prefer Telegram deep link so recipient opens WebApp with initData
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const inviteLink = botUsername
-      ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
-      : `${appUrl}?invite=${createdCode}`
+    const inviteLink = buildInviteLink(createdCode)
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join me in S&O!')}`
     
     if (window.Telegram?.WebApp) {
@@ -70,10 +74,7 @@ export function PairingScreen() {
 
   const handleCopyLink = async () => {
     if (!createdCode) return
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const inviteLink = botUsername
-      ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
-      : `${appUrl}?invite=${createdCode}`
+    const inviteLink = buildInviteLink(createdCode)
     
     try {
         await navigator.clipboard.writeText(inviteLink)
@@ -124,18 +125,14 @@ export function PairingScreen() {
                <div className="mb-4">
                    <a 
                        href={typeof window !== 'undefined'
-                        ? (botUsername
-                          ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
-                          : `${window.location.origin}?invite=${createdCode}`)
+                        ? buildInviteLink(createdCode)
                         : '#'}
                        target="_blank"
                        rel="noopener noreferrer"
                        className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
                    >
                        {typeof window !== 'undefined'
-                        ? (botUsername
-                          ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
-                          : `${window.location.origin}?invite=${createdCode}`)
+                        ? buildInviteLink(createdCode)
                         : ''}
                    </a>
                </div>
