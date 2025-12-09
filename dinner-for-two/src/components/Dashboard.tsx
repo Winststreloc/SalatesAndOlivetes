@@ -1334,11 +1334,30 @@ export function Dashboard() {
                                                       
                                                       setDishes(prev => {
                                                         if (!isMountedRef.current) return prev
-                                                        return [...prev, {
-                                                            ...dish,
-                                                            ingredients: [],
-                                                            status: 'proposed'
-                                                        }]
+                                                        // Check if dish already exists (update case - when ingredients are added)
+                                                        const existingIndex = prev.findIndex(d => d.id === dish.id)
+                                                        if (existingIndex >= 0) {
+                                                          // Update existing dish with new data (including ingredients)
+                                                          const updated = [...prev]
+                                                          updated[existingIndex] = dish
+                                                          logger.info('Updated existing dish with ingredients', {
+                                                            dishId: dish.id,
+                                                            dishName: dish.name,
+                                                            ingredientsCount: dish.ingredients?.length || 0
+                                                          })
+                                                          return updated
+                                                        } else {
+                                                          // Add new dish
+                                                          logger.info('Added new dish', {
+                                                            dishId: dish.id,
+                                                            dishName: dish.name
+                                                          })
+                                                          return [...prev, {
+                                                              ...dish,
+                                                              ingredients: dish.ingredients || [],
+                                                              status: dish.status || 'proposed'
+                                                          }]
+                                                        }
                                                       })
                                                   }
                                                   
