@@ -450,10 +450,10 @@ export function Dashboard() {
   }
   
   const handleShare = () => {
-    const inviteLink = buildBotLink(inviteCode)
+    const inviteLink = buildAppLink(inviteCode)
     if (!inviteLink) return
-    const inviteText = `Join me in S&O! Click the link: ${inviteLink}`
-    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${inviteText}`
+    const inviteText = 'Join me in Salates and Olivetes!'
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteText)}`
     
     if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.openTelegramLink(url)
@@ -463,7 +463,7 @@ export function Dashboard() {
   }
 
   const handleCopyLink = async () => {
-    const inviteLink = buildBotLink(inviteCode)
+    const inviteLink = buildAppLink(inviteCode)
     if (!inviteLink) return
     
     try {
@@ -487,9 +487,10 @@ export function Dashboard() {
       setShowDaySelector(true)
   }
 
-  const buildBotLink = (code?: string | null) => {
+  // Link to open WebApp directly with startapp param (Telegram will open bot WebApp)
+  const buildAppLink = (code?: string | null) => {
     if (!code || !botUsername) return ''
-    return `https://t.me/${botUsername}?start=${code}`
+    return `https://t.me/${botUsername}/app?startapp=${code}`
   }
 
   const handleConfirmAddIdea = async (day: number) => {
@@ -1031,12 +1032,12 @@ export function Dashboard() {
                        </div>
                        <div className="mb-4">
                        <a 
-                          href={buildBotLink(inviteCode) || '#'}
+                           href={buildAppLink(inviteCode) || '#'}
                            target="_blank"
                            rel="noopener noreferrer"
                            className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
                        >
-                        {buildBotLink(inviteCode)}
+                         {buildAppLink(inviteCode)}
                        </a>
                            
                        </div>

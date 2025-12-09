@@ -25,6 +25,11 @@ export function PairingScreen() {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
     if (startParam) {
       setInviteCode(startParam)
+      // Auto-join when code is provided via start_param
+      joinCouple(startParam).catch((e: any) => {
+        console.error('Failed to auto-join:', e)
+        showToast.error(t.invalidCode)
+      })
       return
     }
 
@@ -34,9 +39,12 @@ export function PairingScreen() {
     if (inviteParam) {
       setInviteCode(inviteParam)
       // Optionally auto-join if code is provided
-      // handleJoin() // Uncomment if you want auto-join
+      // joinCouple(inviteParam).catch((e) => {
+      //   console.error('Failed to auto-join:', e)
+      //   showToast.error(t.invalidCode)
+      // })
     }
-  }, [])
+  }, [joinCouple, t])
 
   const handleCreate = async () => {
     const couple = await createCouple()
@@ -69,8 +77,8 @@ export function PairingScreen() {
 
   const handleShare = () => {
     if (!createdCode) return
-    // Share bot link so recipient starts bot and it can reply with WebApp button
-    const inviteLink = botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode)
+    // Share WebApp link so recipient opens app directly with code
+    const inviteLink = botUsername ? buildAppLink(createdCode) : buildFallbackLink(createdCode)
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join me in S&O!')}`
     
     if (window.Telegram?.WebApp) {
@@ -82,7 +90,7 @@ export function PairingScreen() {
 
   const handleCopyLink = async () => {
     if (!createdCode) return
-    const inviteLink = botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode)
+    const inviteLink = botUsername ? buildAppLink(createdCode) : buildFallbackLink(createdCode)
     
     try {
         await navigator.clipboard.writeText(inviteLink)
@@ -133,14 +141,14 @@ export function PairingScreen() {
                <div className="mb-4">
                    <a 
                        href={typeof window !== 'undefined'
-                        ? (botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode))
+                        ? (botUsername ? buildAppLink(createdCode) : buildFallbackLink(createdCode))
                         : '#'}
                        target="_blank"
                        rel="noopener noreferrer"
                        className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
                    >
                        {typeof window !== 'undefined'
-                        ? (botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode))
+                        ? (botUsername ? buildAppLink(createdCode) : buildFallbackLink(createdCode))
                         : ''}
                    </a>
                    {botUsername && (
