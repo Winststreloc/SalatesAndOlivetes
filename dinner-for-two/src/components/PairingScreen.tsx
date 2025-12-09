@@ -57,7 +57,7 @@ export function PairingScreen() {
   const handleJoin = async () => {
     try {
         await joinCouple(inviteCode)
-    } catch (e) {
+    } catch (e: unknown) {
         showToast.error(t.invalidCode)
     }
   }
@@ -88,7 +88,7 @@ export function PairingScreen() {
     try {
         await navigator.clipboard.writeText(inviteLink)
         showToast.success(t.copied)
-    } catch (e) {
+    } catch (e: unknown) {
         // Fallback for older browsers
         const textArea = document.createElement('textarea')
         textArea.value = inviteLink
@@ -120,7 +120,7 @@ export function PairingScreen() {
                  <Input 
                    placeholder={t.enterCode}
                    value={inviteCode} 
-                   onChange={(e) => setInviteCode(e.target.value)} 
+                  onChange={(e: any) => setInviteCode(e.target.value)} 
                  />
                  <Button variant="outline" onClick={handleJoin}>{t.join}</Button>
                </div>
@@ -148,7 +148,7 @@ export function PairingScreen() {
                           : `${window.location.origin}?invite=${createdCode}`)
                         : ''}
                    </a>
-               </div>
+               </div> 
                
                <Button className="w-full mt-4 flex items-center gap-2" onClick={handleShare}>
                  <Share2 className="w-4 h-4" />
