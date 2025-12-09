@@ -50,6 +50,7 @@ declare module 'lucide-react' {
   export const Download: any
   export const Edit2: any
   export const X: any
+  export const AlertTriangle: any
   const icons: Record<string, any>
   export default icons
 }
