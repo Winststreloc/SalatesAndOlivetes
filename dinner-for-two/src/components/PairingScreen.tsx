@@ -15,6 +15,7 @@ export function PairingScreen() {
   const [inviteCode, setInviteCode] = useState('')
   const [createdCode, setCreatedCode] = useState<string | null>(null)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+  const appVersion = process.env.NEXT_PUBLIC_APP_VERSION || 'dev'
 
   // Check for invite parameter in URL
   useEffect(() => {
@@ -153,6 +154,9 @@ export function PairingScreen() {
            )}
         </CardContent>
       </Card>
+      <div className="absolute left-4 bottom-4 text-xs text-muted-foreground">
+        v{appVersion}
+      </div>
     </div>
   )
 }
