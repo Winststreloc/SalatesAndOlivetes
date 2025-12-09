@@ -6,12 +6,19 @@ import { useLang } from './LanguageProvider'
 import ReactMarkdown from 'react-markdown'
 import { Textarea } from '@/components/ui/textarea'
 import { useEffect, useState } from 'react'
+import { IngredientForm } from './IngredientForm'
+import { addDishIngredient, getDish } from '@/app/actions'
+import { showToast } from '@/utils/toast'
+import { handleError, createErrorContext } from '@/utils/errorHandler'
+import { Plus } from 'lucide-react'
 
-export function RecipeView({ dish, isOpen, onClose, onSave }: { dish: any, isOpen: boolean, onClose: () => void, onSave: (recipe: string) => Promise<void> | void }) {
+export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }: { dish: any, isOpen: boolean, onClose: () => void, onSave: (recipe: string) => Promise<void> | void, onIngredientAdded?: (updatedDish: any) => void }) {
   const { t } = useLang()
   const [editMode, setEditMode] = useState(false)
   const [recipeText, setRecipeText] = useState(dish?.recipe || '')
   const [saving, setSaving] = useState(false)
+  const [showAddIngredient, setShowAddIngredient] = useState(false)
+  const [addingIngredient, setAddingIngredient] = useState(false)
   
   useEffect(() => {
     if (dish && !editMode) {
@@ -31,6 +38,30 @@ export function RecipeView({ dish, isOpen, onClose, onSave }: { dish: any, isOpe
     }
   }
 
+  const handleAddIngredient = async (name: string, amount: string, unit: string) => {
+    if (!dish?.id) return
+    
+    setAddingIngredient(true)
+    try {
+      await addDishIngredient(dish.id, name, amount, unit)
+      // Fetch updated dish with new ingredient
+      const updatedDish = await getDish(dish.id)
+      if (updatedDish && onIngredientAdded) {
+        onIngredientAdded(updatedDish)
+      }
+      setShowAddIngredient(false)
+      showToast.success(t.addIngredientSuccess || 'Ingredient added successfully')
+    } catch (error: any) {
+      handleError(error, createErrorContext('handleAddIngredient', {
+        type: 'DATABASE_ERROR',
+        metadata: { dishId: dish.id, name, amount, unit },
+        showToast: true,
+      }))
+    } finally {
+      setAddingIngredient(false)
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[80vh] overflow-auto">
@@ -40,14 +71,35 @@ export function RecipeView({ dish, isOpen, onClose, onSave }: { dish: any, isOpe
         
         <div className="space-y-4">
             <div>
-                <h3 className="font-semibold mb-2 text-foreground">Ingredients</h3>
-                <ul className="list-disc pl-5 text-sm space-y-1 text-foreground">
-                    {dish.ingredients?.map((ing: any) => (
-                        <li key={ing.id}>
-                            {ing.amount} {ing.unit} {ing.name}
-                        </li>
-                    ))}
-                </ul>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-foreground">Ingredients</h3>
+                    {!showAddIngredient && (
+                        <Button variant="ghost" size="sm" onClick={() => setShowAddIngredient(true)}>
+                            <Plus className="w-4 h-4 mr-1" />
+                            {t.addIngredient || 'Add Ingredient'}
+                        </Button>
+                    )}
+                </div>
+                {showAddIngredient ? (
+                    <IngredientForm
+                        onSubmit={handleAddIngredient}
+                        onCancel={() => setShowAddIngredient(false)}
+                    />
+                ) : (
+                    <ul className="list-disc pl-5 text-sm space-y-1 text-foreground">
+                        {dish.ingredients && dish.ingredients.length > 0 ? (
+                            dish.ingredients.map((ing: any) => (
+                                <li key={ing.id}>
+                                    {ing.amount} {ing.unit} {ing.name}
+                                </li>
+                            ))
+                        ) : (
+                            <li className="text-muted-foreground italic">
+                                {t.noIngredients || 'No ingredients yet'}
+                            </li>
+                        )}
+                    </ul>
+                )}
             </div>
             
             <div>

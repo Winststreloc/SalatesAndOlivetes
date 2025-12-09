@@ -409,6 +409,76 @@ export async function moveDish(dishId: string, date: string) {
   revalidatePath('/')
 }
 
+export async function addDishIngredient(dishId: string, name: string, amount?: string, unit?: string) {
+  const user = await getUserFromSession()
+  if (!user) {
+    const error = new Error('Unauthorized: Please log in')
+    handleError(error, createErrorContext('addDishIngredient', {
+      type: 'AUTH_ERROR',
+      showToast: false,
+    }))
+    throw error
+  }
+  if (!user.couple_id) {
+    const error = new Error('Unauthorized: Please create or join a couple first')
+    handleError(error, createErrorContext('addDishIngredient', {
+      type: 'AUTH_ERROR',
+      userId: String(user.telegram_id),
+      showToast: false,
+    }))
+    throw error
+  }
+
+  const supabase = await createServerSideClient()
+  
+  // Verify dish belongs to user's couple
+  const { data: dish, error: dishError } = await supabase
+    .from('dishes')
+    .select('id, couple_id')
+    .eq('id', dishId)
+    .eq('couple_id', user.couple_id)
+    .single()
+
+  if (dishError || !dish) {
+    const error = new Error('Dish not found or unauthorized')
+    handleError(error, createErrorContext('addDishIngredient', {
+      type: 'AUTH_ERROR',
+      userId: String(user.telegram_id),
+      coupleId: user.couple_id,
+      metadata: { dishId },
+      showToast: false,
+    }))
+    throw error
+  }
+
+  const { data, error } = await supabase
+    .from('ingredients')
+    .insert({
+      dish_id: dishId,
+      name: name.trim(),
+      amount: amount || '',
+      unit: unit || '',
+      is_purchased: false
+    })
+    .select()
+    .single()
+    
+  if (error) {
+    const dbError = new Error(error.message)
+    handleError(dbError, createErrorContext('addDishIngredient', {
+      type: 'DATABASE_ERROR',
+      userId: String(user.telegram_id),
+      coupleId: user.couple_id,
+      metadata: { dishId, name, amount, unit },
+      showToast: false,
+    }))
+    throw dbError
+  }
+    
+  revalidatePath('/')
+  return data
+}
+
 export async function updateRecipe(dishId: string, recipe: string) {
   const user = await getUserFromSession()
   if (!user) {

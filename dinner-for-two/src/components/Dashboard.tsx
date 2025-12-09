@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner, getCouplePreferences, updateCouplePreferences, updateRecipe } from '@/app/actions'
+import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner, getCouplePreferences, updateCouplePreferences, updateRecipe, addDishIngredient } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
@@ -1239,6 +1239,14 @@ export function Dashboard() {
         onSave={async (recipe) => {
           if (!selectedDish) return
           await handleSaveRecipe(selectedDish.id, recipe)
+        }}
+        onIngredientAdded={async (updatedDish) => {
+          if (isMountedRef.current) {
+            // Update selected dish with new ingredients
+            setSelectedDish(updatedDish)
+            // Update dish in dishes list
+            setDishes(prev => prev.map(d => d.id === updatedDish.id ? updatedDish : d))
+          }
         }}
       />
 
