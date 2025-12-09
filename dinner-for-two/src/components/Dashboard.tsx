@@ -1410,10 +1410,12 @@ export function Dashboard() {
                                                                   {dish.ingredients.map((i: any) => i.name).join(', ')}
                                                                 </p>
                                                             ) : (
-                                                                <div className="flex items-center text-xs text-blue-500 animate-pulse">
-                                                                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                                                                    {t.generating}
-                                                                </div>
+                                                                couplePreferences.useAI !== false && (
+                                                                    <div className="flex items-center text-xs text-blue-500 animate-pulse">
+                                                                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                                                        {t.generating}
+                                                                    </div>
+                                                                )
                                                             )}
                                                        </div>
                                                    </div>

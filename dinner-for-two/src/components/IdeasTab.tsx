@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useLang } from './LanguageProvider'
-import { getPreferences, updatePreferences, generateIdeas } from '@/app/actions'
+import { getPreferences, updatePreferences, generateIdeas, getCouplePreferences } from '@/app/actions'
 import { Loader2, Lightbulb, Settings } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -25,18 +25,32 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
   const [ideas, setIdeas] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [useAI, setUseAI] = useState(true)
 
   useEffect(() => {
-    getPreferences().then(data => {
-        // Ensure all arrays exist
-        setPrefs({
-            sides: data.sides || [],
-            proteins: data.proteins || [],
-            veggies: data.veggies || [],
-            treats: data.treats || [],
-            cuisines: data.cuisines || []
-        })
-    })
+    const loadData = async () => {
+      const data = await getPreferences()
+      // Ensure all arrays exist
+      setPrefs({
+          sides: data.sides || [],
+          proteins: data.proteins || [],
+          veggies: data.veggies || [],
+          treats: data.treats || [],
+          cuisines: data.cuisines || []
+      })
+      const couplePrefs = await getCouplePreferences()
+      setUseAI(couplePrefs.useAI !== false)
+    }
+    loadData()
+    
+    // Update useAI periodically to catch changes from settings
+    const interval = setInterval(() => {
+      getCouplePreferences().then(prefs => {
+        setUseAI(prefs.useAI !== false)
+      })
+    }, 2000) // Check every 2 seconds
+    
+    return () => clearInterval(interval)
   }, [])
 
   const handleSave = async () => {
@@ -129,10 +143,15 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
                    </div>
                )}
                
-               <Button onClick={handleGenerate} disabled={loading} className="w-full h-12 text-lg shadow-lg">
+               <Button onClick={handleGenerate} disabled={loading || !useAI} className="w-full h-12 text-lg shadow-lg">
                    {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Lightbulb className="w-5 h-5 mr-2" />}
                    {t.generateIdeas}
                </Button>
+               {!useAI && (
+                   <p className="text-sm text-muted-foreground text-center mt-2">
+                       {t.useAIForIngredientsDesc || 'AI generation is disabled in couple settings'}
+                   </p>
+               )}
           </div>
       </div>
   )
