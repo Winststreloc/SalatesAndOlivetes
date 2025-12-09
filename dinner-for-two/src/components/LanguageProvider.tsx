@@ -140,7 +140,8 @@ const translations = {
     edit: "Edit",
     recipePlaceholder: "Describe how to cook this dish...",
     cancel: "Cancel",
-    noIngredients: "No ingredients yet"
+    noIngredients: "No ingredients yet",
+    calories: "Calories"
   },
   ru: {
     startNew: "Создать пару",
@@ -228,6 +229,7 @@ const translations = {
     recipePlaceholder: "Опишите, как приготовить это блюдо...",
     cancel: "Отмена",
     noIngredients: "Ингредиентов пока нет",
+    calories: "Калории",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",

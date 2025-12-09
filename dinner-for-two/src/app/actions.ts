@@ -108,19 +108,21 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   const dishNameLower = dishName.toLowerCase().trim()
   const { data: cached } = await supabase
     .from('dish_cache')
-    .select('ingredients, recipe')
+    .select('ingredients, recipe, calories')
     .eq('dish_name_lower', dishNameLower)
     .eq('lang', lang)
     .single()
   
   let ingredients: any[] = []
   let recipe: string = ''
+  let calories: number | null = null
   
   if (cached) {
     // Use cached data
     console.log('Using cached data for:', dishName)
     ingredients = cached.ingredients || []
     recipe = cached.recipe || ''
+    calories = cached.calories ?? null
     
     // Update usage count
     await supabase
@@ -133,7 +135,7 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-robotics-er-1.5-preview' })
       
-      const prompt = `You are a chef assistant. Your task is to validate if the input is a food-related dish name and generate ingredients/recipe.
+      const prompt = `You are a chef assistant. Your task is to validate if the input is a food-related dish name and generate ingredients/recipe plus an estimated calorie count.
 
 IMPORTANT VALIDATION RULES:
 1. If the input is NOT related to food/cooking (e.g., programming questions, general questions, commands, spam, non-food items), return: {"error": "INVALID_INPUT", "message": "${lang === 'ru' ? 'Это не название блюда, связанное с едой. Пожалуйста, введите валидное название блюда.' : 'This is not a food-related dish name. Please enter a valid dish name.'}"}
@@ -142,6 +144,7 @@ IMPORTANT VALIDATION RULES:
 If valid, generate a JSON object with:
 - 'ingredients': array of ingredients, each with 'name' (string), 'amount' (number or string), 'unit' (string, e.g. kg, g, pcs, ml)
 - 'recipe': string with cooking instructions (markdown allowed)
+- 'calories': integer number with estimated total kcal for the whole dish (not per 100g)
 
 Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
 Return ONLY valid JSON, no other text.
@@ -181,6 +184,9 @@ Input: ${dishName}`
       if (parsed.recipe) {
           recipe = parsed.recipe
       }
+      if (parsed.calories !== undefined && parsed.calories !== null && !Number.isNaN(Number(parsed.calories))) {
+          calories = Number(parsed.calories)
+      }
       
       // Save to cache
       if (ingredients.length > 0 || recipe) {
@@ -191,6 +197,7 @@ Input: ${dishName}`
             dish_name_lower: dishNameLower,
             ingredients: ingredients,
             recipe: recipe,
+            calories: calories,
             lang: lang,
             usage_count: 1
           }, {
@@ -215,9 +222,12 @@ Input: ${dishName}`
     }
   }
 
-  // Update dish with recipe
-  if (recipe) {
-      await supabase.from('dishes').update({ recipe }).eq('id', dishId)
+  // Update dish with recipe/calories
+  const dishUpdate: Record<string, any> = {}
+  if (recipe) dishUpdate.recipe = recipe
+  if (calories !== null && calories !== undefined) dishUpdate.calories = calories
+  if (Object.keys(dishUpdate).length > 0) {
+      await supabase.from('dishes').update(dishUpdate).eq('id', dishId)
   }
 
   if (ingredients.length > 0) {

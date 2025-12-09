@@ -1408,10 +1408,15 @@ export function Dashboard() {
                                                        style={{ ...provided.draggableProps.style }}
                                                    >
                                                        <div className="flex justify-between items-start">
-                                                           <div className="font-medium pr-6 flex items-center cursor-pointer hover:text-blue-600 transition-colors" onClick={() => setSelectedDish(dish)}>
-                                                                   <BookOpen className="w-4 h-4 mr-2 text-muted-foreground" />
-                                                               {dish.name}
-                                                           </div>
+                                                          <div className="font-medium pr-6 flex items-center cursor-pointer hover:text-blue-600 transition-colors gap-2 flex-wrap" onClick={() => setSelectedDish(dish)}>
+                                                                  <BookOpen className="w-4 h-4 text-muted-foreground" />
+                                                              <span>{dish.name}</span>
+                                                              {dish.calories ? (
+                                                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                                                                  {dish.calories} kcal
+                                                                </span>
+                                                              ) : null}
+                                                          </div>
                                                            <div className="absolute top-2 right-2 flex gap-2">
                                                                {/* Show approve button if:
                                                                    - User is NOT the creator AND has a partner, OR

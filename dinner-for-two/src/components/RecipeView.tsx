@@ -70,6 +70,11 @@ export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }:
         </DialogHeader>
         
         <div className="space-y-4">
+            {dish.calories !== undefined && dish.calories !== null && dish.calories !== '' && (
+                <div className="text-sm text-muted-foreground">
+                    {t.calories || 'Calories'}: <span className="font-semibold text-foreground">{dish.calories}</span> kcal
+                </div>
+            )}
             <div>
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-foreground">Ingredients</h3>
