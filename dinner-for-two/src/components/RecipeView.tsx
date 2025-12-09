@@ -12,7 +12,9 @@ import { showToast } from '@/utils/toast'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { Plus } from 'lucide-react'
 
-export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }: { dish: any, isOpen: boolean, onClose: () => void, onSave: (recipe: string) => Promise<void> | void, onIngredientAdded?: (updatedDish: any) => void }) {
+import { Dish, Ingredient } from '@/types'
+
+export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }: { dish: Dish | null, isOpen: boolean, onClose: () => void, onSave: (recipe: string) => Promise<void> | void, onIngredientAdded?: (updatedDish: Dish) => void }) {
   const { t } = useLang()
   const [editMode, setEditMode] = useState(false)
   const [recipeText, setRecipeText] = useState(dish?.recipe || '')
@@ -51,7 +53,7 @@ export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }:
       }
       setShowAddIngredient(false)
       showToast.success(t.addIngredientSuccess || 'Ingredient added successfully')
-    } catch (error: any) {
+    } catch (error: unknown) {
       handleError(error, createErrorContext('handleAddIngredient', {
         type: 'DATABASE_ERROR',
         metadata: { dishId: dish.id, name, amount, unit },
@@ -93,7 +95,7 @@ export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }:
                 ) : (
                     <ul className="list-disc pl-5 text-sm space-y-1 text-foreground">
                         {dish.ingredients && dish.ingredients.length > 0 ? (
-                            dish.ingredients.map((ing: any) => (
+                            dish.ingredients?.map((ing: Ingredient) => (
                                 <li key={ing.id}>
                                     {ing.amount} {ing.unit} {ing.name}
                                 </li>

@@ -1,16 +1,16 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Dish, ShoppingListItem } from '@/types'
+import { Dish, ShoppingListItem, ManualIngredient } from '@/types'
 import { groupByCategory } from '@/utils/ingredientCategories'
 
-export function useShoppingList(dishes: Dish[], manualIngredients: any[]) {
+export function useShoppingList(dishes: Dish[], manualIngredients: ManualIngredient[]) {
   const shoppingList = useMemo<ShoppingListItem[]>(() => {
     const selectedDishes = (dishes || []).filter(d => d.status === 'selected')
     const map = new Map<string, ShoppingListItem>()
     
     selectedDishes.forEach(dish => {
-      (dish.ingredients || []).forEach((ing: any) => {
+      (dish.ingredients || []).forEach((ing: { id: string; name?: string; amount?: number | string; unit?: string; is_purchased: boolean }) => {
         const cleanName = ing.name?.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim().toLowerCase()
         const cleanUnit = ing.unit?.trim().toLowerCase() || ''
         let singularName = cleanName
@@ -43,7 +43,7 @@ export function useShoppingList(dishes: Dish[], manualIngredients: any[]) {
       })
     })
     
-    manualIngredients.forEach((ing: any) => {
+    manualIngredients.forEach((ing: ManualIngredient) => {
       const cleanName = ing.name?.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim().toLowerCase()
       const cleanUnit = ing.unit?.trim().toLowerCase() || ''
       const key = `${cleanName}-${cleanUnit}`

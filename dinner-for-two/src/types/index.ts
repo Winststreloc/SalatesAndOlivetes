@@ -80,4 +80,39 @@ export interface RealtimePayload<T> {
   old: T
 }
 
+// Supabase Realtime channel type
+export type RealtimeChannel = {
+  on: (event: string, filter: Record<string, unknown>, callback: (payload: RealtimePayload<unknown>) => void) => RealtimeChannel
+  subscribe: (callback: (status: string) => void) => void
+  unsubscribe: () => void
+}
+
+// Drag and Drop types
+export interface DragResult {
+  draggableId: string
+  type: string
+  source: {
+    droppableId: string
+    index: number
+  }
+  destination?: {
+    droppableId: string
+    index: number
+  } | null
+  reason: string
+}
+
+// Droppable/Draggable provided props
+export interface DroppableProvided {
+  innerRef: (element: HTMLElement | null) => void
+  droppableProps: Record<string, unknown>
+  placeholder: React.ReactElement | null
+}
+
+export interface DraggableProvided {
+  innerRef: (element: HTMLElement | null) => void
+  draggableProps: Record<string, unknown>
+  dragHandleProps: Record<string, unknown> | null
+}
+
 

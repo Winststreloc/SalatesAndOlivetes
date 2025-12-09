@@ -25,7 +25,7 @@ import { showToast } from '@/utils/toast'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { logger } from '@/utils/logger'
 import { getWeekDates } from '@/utils/dateUtils'
-import { Dish, ShoppingListItem } from '@/types'
+import { Dish, ShoppingListItem, ManualIngredient, RealtimePayload, Ingredient } from '@/types'
 
 export function Dashboard() {
   const { t, lang } = useLang()
@@ -39,7 +39,7 @@ export function Dashboard() {
   const [pendingIdea, setPendingIdea] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'alphabetical' | 'category' | 'amount'>('category')
-  const [manualIngredients, setManualIngredients] = useState<any[]>([])
+  const [manualIngredients, setManualIngredients] = useState<ManualIngredient[]>([])
   const [editingIngredient, setEditingIngredient] = useState<{ id: string, type: 'dish' | 'manual', name: string, amount: string, unit: string } | null>(null)
   const [showAddIngredient, setShowAddIngredient] = useState(false)
   const [hasPartnerUser, setHasPartnerUser] = useState(false)
@@ -94,10 +94,10 @@ export function Dashboard() {
 
   // Realtime subscription
   const { isConnected: isRealtimeConnected } = useRealtime(coupleId, {
-    onDishes: (payload: any) => {
+    onDishes: (payload: RealtimePayload<Dish>) => {
       // Handle dishes updates
       if (payload.eventType === 'INSERT') {
-        const newDishId = (payload.new as any).id
+        const newDishId = payload.new.id
         if (newDishId && isMountedRef.current && !recentlyAddedDishesRef.current.has(newDishId)) {
           getDish(newDishId).then(dish => {
             if (dish && isMountedRef.current) {
@@ -114,7 +114,7 @@ export function Dashboard() {
           }).catch(err => console.error('Failed to fetch new dish:', err))
         }
       } else if (payload.eventType === 'UPDATE') {
-        const updatedDishId = (payload.new as any).id
+        const updatedDishId = payload.new.id
         if (updatedDishId && isMountedRef.current) {
           getDish(updatedDishId).then(dish => {
             if (dish && isMountedRef.current) {
@@ -128,8 +128,8 @@ export function Dashboard() {
         }
       }
     },
-    onIngredients: (payload: any) => {
-      const dishId = (payload.new as any)?.dish_id || (payload.old as any)?.dish_id
+    onIngredients: (payload: RealtimePayload<Ingredient>) => {
+      const dishId = payload.new?.dish_id || payload.old?.dish_id
       if (dishId && isMountedRef.current) {
         getDish(dishId).then(dish => {
           if (dish && isMountedRef.current) {
@@ -138,9 +138,9 @@ export function Dashboard() {
         }).catch(err => logger.error('Failed to fetch dish with updated ingredients', err, { dishId }))
       }
     },
-    onManualIngredients: (payload: any) => {
+    onManualIngredients: (payload: RealtimePayload<ManualIngredient>) => {
       if (payload.eventType === 'INSERT') {
-        const newIngredient = payload.new as any
+        const newIngredient = payload.new
         if (newIngredient?.id && isMountedRef.current) {
           setManualIngredients(prev => {
             if (prev.some(ing => ing.id === newIngredient.id)) {
@@ -150,12 +150,12 @@ export function Dashboard() {
           })
         }
       } else if (payload.eventType === 'UPDATE') {
-        const updatedIngredient = payload.new as any
+        const updatedIngredient = payload.new
         if (updatedIngredient?.id && isMountedRef.current) {
           setManualIngredients(prev => prev.map(ing => ing.id === updatedIngredient.id ? { ...ing, ...updatedIngredient } : ing))
         }
       } else if (payload.eventType === 'DELETE') {
-        const deletedId = (payload.old as any)?.id
+        const deletedId = payload.old?.id
         if (deletedId && isMountedRef.current) {
           setManualIngredients(prev => prev.filter(ing => ing.id !== deletedId))
         }
@@ -236,33 +236,35 @@ export function Dashboard() {
         setTab('plan')
         showToast.success(t.addSuccess || 'Dish added successfully')
       }
-    } catch (error: any) {
-      handleError(error, createErrorContext('handleConfirmAddIdea', {
+    } catch (error: unknown) {
+      handleError(error as Error, createErrorContext('handleConfirmAddIdea', {
         type: 'DATABASE_ERROR',
         userId: undefined,
         metadata: { dishName: name, date },
       }))
-      showToast.error(error?.message || t.failedAdd || 'Failed to add dish')
+      const errorMessage = error instanceof Error ? error.message : (t.failedAdd || 'Failed to add dish')
+      showToast.error(errorMessage)
     }
   }
 
-  const handleSaveRecipe = useCallback(async (dishId: string, recipe: string) => {
+  const handleSaveRecipe = useCallback(async (recipe: string) => {
+    if (!selectedDish) return
     try {
-      const updated = await updateRecipe(dishId, recipe)
+      const updated = await updateRecipe(selectedDish.id, recipe)
       if (isMountedRef.current) {
-        setDishes(prev => prev.map(d => d.id === dishId ? { ...d, recipe: updated.recipe } : d))
-        setSelectedDish(prev => prev && prev.id === dishId ? { ...prev, recipe: updated.recipe } : prev)
+        setDishes(prev => prev.map(d => d.id === selectedDish.id ? { ...d, recipe: updated.recipe } : d))
+        setSelectedDish(prev => prev && prev.id === selectedDish.id ? { ...prev, recipe: updated.recipe } : prev)
       }
       showToast.success(t.settingsSaved || 'Saved successfully')
-    } catch (error: any) {
-      handleError(error, createErrorContext('handleSaveRecipe', {
+    } catch (error: unknown) {
+      handleError(error as Error, createErrorContext('handleSaveRecipe', {
         type: 'DATABASE_ERROR',
         userId: undefined,
-        metadata: { dishId, recipeLength: recipe?.length || 0 },
+        metadata: { dishId: selectedDish.id, recipeLength: recipe?.length || 0 },
         showToast: true,
       }))
     }
-  }, [t])
+  }, [t, selectedDish])
 
   const handleToggleIngredient = async (item: ShoppingListItem) => {
     try {
@@ -274,7 +276,7 @@ export function Dashboard() {
         if (isMountedRef.current) {
           setDishes(prev => prev.map(d => ({
             ...d,
-            ingredients: d.ingredients?.map((ing: any) => 
+            ingredients: d.ingredients?.map((ing: Ingredient) => 
               item.ids.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
             ) || []
           })))
@@ -293,12 +295,12 @@ export function Dashboard() {
       if (idsToUpdate.length > 0) {
         await toggleIngredientsPurchased(idsToUpdate, newStatus)
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to toggle ingredient:', e)
       if (isMountedRef.current) {
         refreshDishes()
         loadManualIngredients()
-        showToast.error(e.message || 'Failed to update ingredient')
+        showToast.error((e instanceof Error ? e.message : 'Failed to update ingredient'))
       }
     }
   }
@@ -334,10 +336,10 @@ export function Dashboard() {
         setEditingIngredient(null)
         showToast.success(t.updateIngredientSuccess || 'Ingredient updated successfully')
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to update ingredient:', e)
       if (isMountedRef.current) {
-        showToast.error(e.message || 'Failed to update ingredient')
+        showToast.error((e instanceof Error ? e.message : 'Failed to update ingredient'))
       }
     }
   }
@@ -351,10 +353,10 @@ export function Dashboard() {
         setShowAddIngredient(false)
         showToast.success(t.addIngredientSuccess || 'Ingredient added successfully')
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to add ingredient:', e)
       if (isMountedRef.current) {
-        showToast.error(e.message || 'Failed to add ingredient')
+        showToast.error((e instanceof Error ? e.message : 'Failed to add ingredient'))
       }
     }
   }
@@ -373,18 +375,6 @@ export function Dashboard() {
   const categoryOrder = ['vegetables', 'fruits', 'meat', 'dairy', 'bakery', 'pantry', 'spices', 'other']
 
   const handleExportText = () => {
-    let text = `${t.shoppingList}\n\n`
-      vegetables: t.categoryVegetables,
-      fruits: t.categoryFruits,
-      meat: t.categoryMeat,
-      dairy: t.categoryDairy,
-      bakery: t.categoryBakery,
-      pantry: t.categoryPantry,
-      spices: t.categorySpices,
-      other: t.categoryOther
-    }
-    const categoryOrder = ['vegetables', 'fruits', 'meat', 'dairy', 'bakery', 'pantry', 'spices', 'other']
-    
     let text = `${t.shoppingList}\n\n`
     
     if (sortBy === 'category') {

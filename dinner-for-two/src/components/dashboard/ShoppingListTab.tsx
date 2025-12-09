@@ -9,14 +9,14 @@ import { Search, Plus, Download, Share2, Edit2, Trash2, ChevronDown, ChevronUp }
 import { IngredientForm } from '../IngredientForm'
 import { useLang } from '../LanguageProvider'
 import { useShoppingList } from '@/hooks/useShoppingList'
-import { Dish, ShoppingListItem } from '@/types'
+import { Dish, ShoppingListItem, ManualIngredient } from '@/types'
 import { IngredientCategory, CategorizedIngredient, groupByCategory } from '@/utils/ingredientCategories'
 import { toggleIngredientsPurchased, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient } from '@/app/actions'
 import { showToast } from '@/utils/toast'
 
 interface ShoppingListTabProps {
   dishes: Dish[]
-  manualIngredients: any[]
+  manualIngredients: ManualIngredient[]
   searchQuery: string
   sortBy: 'alphabetical' | 'category' | 'amount'
   showPurchasedItems: Record<string, boolean>

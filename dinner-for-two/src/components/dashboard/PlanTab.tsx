@@ -9,7 +9,7 @@ import { DishSkeleton } from '../LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLang } from '../LanguageProvider'
 import { formatDate, getWeekDates } from '@/utils/dateUtils'
-import { Dish, User } from '@/types'
+import { Dish, DragResult, DroppableProvided, DraggableProvided, Ingredient } from '@/types'
 import { toggleDishSelection, moveDish, deleteDish } from '@/app/actions'
 import { showToast } from '@/utils/toast'
 import { logger } from '@/utils/logger'
@@ -20,7 +20,7 @@ interface PlanTabProps {
   orderedDates: string[]
   addingDay: string | null
   selectedDish: Dish | null
-  user: User | null
+  user: { id: number; first_name: string; username?: string } | null
   hasPartner: boolean
   couplePreferences: { useAI?: boolean }
   recentlyAddedDishesRef: React.MutableRefObject<Set<string>>
@@ -73,7 +73,7 @@ export function PlanTab({
     return groups
   }, [dishes, orderedDates])
 
-  const onDragEnd = async (result: any) => {
+  const onDragEnd = async (result: DragResult) => {
     if (!result.destination) return
     const sourceDate = result.source.droppableId
     const destDate = result.destination.droppableId
@@ -94,7 +94,7 @@ export function PlanTab({
     try {
       onDishesUpdate(prev => prev.map(d => d.id === id ? { ...d, status: currentStatus === 'selected' ? 'proposed' : 'selected' } : d))
       await toggleDishSelection(id, currentStatus !== 'selected')
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to toggle dish:', e)
       if (isMountedRef.current) {
         onRefreshDishes()
@@ -123,7 +123,7 @@ export function PlanTab({
         if (isMountedRef.current) {
           showToast.success(t.deleteSuccess || 'Dish deleted successfully')
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('Failed to delete dish:', e)
         deletingDishesRef.current.delete(id)
         if (isMountedRef.current) {
@@ -157,7 +157,7 @@ export function PlanTab({
       <div className="space-y-6">
         {orderedDates.map(date => (
           <Droppable key={date} droppableId={date}>
-            {(provided: any) => (
+            {(provided: DroppableProvided) => (
               <div 
                 ref={provided.innerRef}
                 {...provided.droppableProps}
@@ -208,7 +208,7 @@ export function PlanTab({
                     
                     return (
                       <Draggable key={dish.id} draggableId={dish.id} index={index}>
-                        {(provided: any) => (
+                        {(provided: DraggableProvided) => (
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
@@ -264,7 +264,7 @@ export function PlanTab({
                             <div className="mt-1">
                               {dish.ingredients && dish.ingredients.length > 0 ? (
                                 <p className="text-xs text-muted-foreground">
-                                  {dish.ingredients.map((i: any) => i.name).join(', ')}
+                                  {dish.ingredients?.map((i: Ingredient) => i.name).join(', ') || ''}
                                 </p>
                               ) : (
                                 couplePreferences.useAI !== false && (

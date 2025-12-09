@@ -81,7 +81,7 @@ export async function getDishes() {
     .order('dish_date', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false })
     
-  const filtered = (data || []).filter((dish: any) => {
+  const filtered = (data || []).filter((dish: { dish_date?: string | null }) => {
     if (!dish.dish_date) return true
     const dishDate = new Date(dish.dish_date + 'T00:00:00')
     return dishDate >= today && dishDate <= endDate

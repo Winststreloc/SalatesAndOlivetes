@@ -34,7 +34,7 @@ export async function getInviteCode() {
     return data?.invite_code
 }
 
-export async function updatePreferences(prefs: any) {
+export async function updatePreferences(prefs: Record<string, unknown>) {
     const user = await getUserFromSession()
     if (!user) {
       console.error('updatePreferences: No user session')
@@ -79,7 +79,7 @@ export async function getCouplePreferences() {
     return data?.preferences || { useAI: true }
 }
 
-export async function updateCouplePreferences(preferences: Record<string, any>) {
+export async function updateCouplePreferences(preferences: Record<string, unknown>) {
     const user = await getUserFromSession()
     if (!user || !user.couple_id) {
         throw new Error('Unauthorized: Please log in and join a couple')

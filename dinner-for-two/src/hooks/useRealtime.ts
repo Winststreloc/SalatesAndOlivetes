@@ -2,18 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import { RealtimePayload, RealtimeChannel, Dish, Ingredient, ManualIngredient } from '@/types'
 
-type Callback = (payload: any) => void
+type Callback<T> = (payload: RealtimePayload<T>) => void
 
 interface RealtimeHandlers {
-  onDishes?: Callback
-  onIngredients?: Callback
-  onManualIngredients?: Callback
+  onDishes?: Callback<Dish>
+  onIngredients?: Callback<Ingredient>
+  onManualIngredients?: Callback<ManualIngredient>
 }
 
 export function useRealtime(coupleId?: string | null, handlers: RealtimeHandlers = {}) {
   const [isConnected, setIsConnected] = useState(false)
-  const channelRef = useRef<any>(null)
+  const channelRef = useRef<RealtimeChannel | null>(null)
 
   useEffect(() => {
     if (!coupleId) return

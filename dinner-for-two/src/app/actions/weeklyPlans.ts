@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
+import { Dish } from '@/types'
 
-export async function saveWeeklyPlan(weekStartDate: string, dishes: any[]) {
+export async function saveWeeklyPlan(weekStartDate: string, dishes: Dish[]) {
     const user = await getUserFromSession()
     if (!user || !user.couple_id) {
         throw new Error('Unauthorized: Please log in')

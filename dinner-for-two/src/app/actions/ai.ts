@@ -53,7 +53,13 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     .eq('lang', lang)
     .single()
   
-  let ingredients: any[] = []
+  interface AIIngredient {
+    name: string
+    amount: number | string
+    unit: string
+  }
+  
+  let ingredients: AIIngredient[] = []
   let recipe: string = ''
   let calories: number | null = null
   
@@ -62,9 +68,9 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     recipe = cached.recipe || ''
     calories = cached.calories ?? null
     
-    await supabase
+      await supabase
       .from('dish_cache')
-      .update({ usage_count: (cached as any).usage_count + 1 })
+      .update({ usage_count: ((cached as { usage_count?: number })?.usage_count || 0) + 1 })
       .eq('dish_name_lower', dishNameLower)
       .eq('lang', lang)
   } else {
@@ -137,12 +143,13 @@ Input: ${dishName}`
             onConflict: 'dish_name_lower,lang'
           })
       }
-    } catch (e: any) {
-      if (e.message && (e.message.includes('valid dish name') || e.message.includes('INVALID_INPUT') || e.message.includes('не название блюда') || e.message.includes('not a food-related'))) {
-        throw e
+    } catch (e: unknown) {
+      const error = e instanceof Error ? e : new Error('Unknown error')
+      if (error.message && (error.message.includes('valid dish name') || error.message.includes('INVALID_INPUT') || error.message.includes('не название блюда') || error.message.includes('not a food-related'))) {
+        throw error
       }
       
-      handleError(e, createErrorContext('generateDishIngredients', {
+      handleError(error, createErrorContext('generateDishIngredients', {
         type: 'AI_ERROR',
         userId: String(user.telegram_id),
         coupleId: user.couple_id,
@@ -152,7 +159,7 @@ Input: ${dishName}`
     }
   }
 
-  const dishUpdate: Record<string, any> = {}
+  const dishUpdate: Record<string, string | number> = {}
   if (recipe) dishUpdate.recipe = recipe
   if (calories !== null && calories !== undefined) dishUpdate.calories = calories
   if (Object.keys(dishUpdate).length > 0) {
@@ -160,7 +167,7 @@ Input: ${dishName}`
   }
 
   if (ingredients.length > 0) {
-    const ingredientsToInsert = ingredients.map((ing: any) => ({
+    const ingredientsToInsert = ingredients.map((ing: AIIngredient) => ({
       dish_id: dishId,
       name: ing.name,
       amount: String(ing.amount),

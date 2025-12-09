@@ -150,7 +150,7 @@ export async function updateIngredient(ingredientId: string, name?: string, amou
     
     const supabase = await createServerSideClient()
     
-    const updates: any = {}
+    const updates: Record<string, string | undefined> = {}
     if (name !== undefined) updates.name = name.trim()
     if (amount !== undefined) updates.amount = amount
     if (unit !== undefined) updates.unit = unit
