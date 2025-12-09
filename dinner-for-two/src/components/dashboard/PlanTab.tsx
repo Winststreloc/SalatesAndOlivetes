@@ -128,7 +128,7 @@ export function PlanTab({
         deletingDishesRef.current.delete(id)
         if (isMountedRef.current) {
           onRefreshDishes()
-          showToast.error(e.message || 'Failed to delete dish')
+          showToast.error((e instanceof Error ? e.message : 'Failed to delete dish'))
         }
       }
     })
