@@ -79,7 +79,9 @@ export async function getCouplePreferences() {
     return data?.preferences || { useAI: true }
 }
 
-export async function updateCouplePreferences(preferences: Record<string, unknown>) {
+import { CouplePreferences } from '@/types'
+
+export async function updateCouplePreferences(preferences: CouplePreferences) {
     const user = await getUserFromSession()
     if (!user || !user.couple_id) {
         throw new Error('Unauthorized: Please log in and join a couple')
