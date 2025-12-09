@@ -5,3 +5,4 @@ alter table if exists dishes
 alter table if exists dish_cache
   add column if not exists calories integer;
 
+
