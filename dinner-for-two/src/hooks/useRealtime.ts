@@ -28,20 +28,21 @@ export function useRealtime(coupleId?: string | null, handlers: RealtimeHandlers
     })
     channelRef.current = channel
 
-    channel.on('postgres_changes', {
+    // Use type assertion to bypass strict typing for postgres_changes
+    ;(channel as any).on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'dishes',
       filter: `couple_id=eq.${coupleId}`
     }, handlers.onDishes || (() => {}))
 
-    channel.on('postgres_changes', {
+    ;(channel as any).on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'ingredients'
     }, handlers.onIngredients || (() => {}))
 
-    channel.on('postgres_changes', {
+    ;(channel as any).on('postgres_changes', {
       event: '*',
       schema: 'public',
       table: 'manual_ingredients',

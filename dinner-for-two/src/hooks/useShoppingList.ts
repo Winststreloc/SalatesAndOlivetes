@@ -32,7 +32,7 @@ export function useShoppingList(dishes: Dish[], manualIngredients: ManualIngredi
           map.set(key, { 
               name: ing.name?.trim() || '', 
               amount, 
-              unit: ing.unit, 
+              unit: ing.unit || '', 
               ids: [ing.id],
               is_purchased: ing.is_purchased,
               dishIds: [dish.id],
@@ -60,7 +60,7 @@ export function useShoppingList(dishes: Dish[], manualIngredients: ManualIngredi
         map.set(key, { 
           name: ing.name?.trim() || '', 
           amount, 
-          unit: ing.unit, 
+          unit: ing.unit || '', 
           ids: [], 
           is_purchased: ing.is_purchased, 
           dishIds: [], 
