@@ -51,6 +51,7 @@ export function Dashboard() {
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean, title: string, description: string, onConfirm: () => void } | null>(null)
   const [isLoadingDishes, setIsLoadingDishes] = useState(true)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const channelRef = useRef<any>(null)
   const isMountedRef = useRef(true)
   const deletingDishesRef = useRef<Set<string>>(new Set())
@@ -449,10 +450,8 @@ export function Dashboard() {
   }
   
   const handleShare = () => {
-    if (!inviteCode) return
-    // Create a direct link that opens the app with pre-filled invite code
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const inviteLink = `${appUrl}?invite=${inviteCode}`
+    const inviteLink = buildBotLink(inviteCode)
+    if (!inviteLink) return
     const inviteText = `Join me in S&O! Click the link: ${inviteLink}`
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteText)}`
     
@@ -464,14 +463,11 @@ export function Dashboard() {
   }
 
   const handleCopyLink = async () => {
-    if (!inviteCode) return
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const inviteLink = `${appUrl}?invite=${inviteCode}`
-    const inviteText = `Join me in S&O! Click the link: ${inviteLink}`
-    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteText)}`
+    const inviteLink = buildBotLink(inviteCode)
+    if (!inviteLink) return
     
     try {
-        await navigator.clipboard.writeText(url)
+        await navigator.clipboard.writeText(inviteLink)
         showToast.success(t.copied)
     } catch (e) {
         // Fallback for older browsers
@@ -489,6 +485,11 @@ export function Dashboard() {
       // Show day selector modal
       setPendingIdea(name)
       setShowDaySelector(true)
+  }
+
+  const buildBotLink = (code?: string | null) => {
+    if (!code || !botUsername) return ''
+    return `https://t.me/${botUsername}?start=${code}`
   }
 
   const handleConfirmAddIdea = async (day: number) => {
@@ -1030,12 +1031,12 @@ export function Dashboard() {
                        </div>
                        <div className="mb-4">
                        <a 
-                           href={inviteCode ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${inviteCode}` : '#'}
+                          href={buildBotLink(inviteCode) || '#'}
                            target="_blank"
                            rel="noopener noreferrer"
                            className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
                        >
-                         {inviteCode ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${inviteCode}` : ''}
+                        {buildBotLink(inviteCode)}
                        </a>
                            
                        </div>
