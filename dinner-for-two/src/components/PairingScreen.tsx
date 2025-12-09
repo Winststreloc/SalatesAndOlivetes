@@ -14,17 +14,26 @@ export function PairingScreen() {
   const { t, lang, setLang } = useLang()
   const [inviteCode, setInviteCode] = useState('')
   const [createdCode, setCreatedCode] = useState<string | null>(null)
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
 
   // Check for invite parameter in URL
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const inviteParam = params.get('invite')
-      if (inviteParam) {
-        setInviteCode(inviteParam)
-        // Optionally auto-join if code is provided
-        // handleJoin() // Uncomment if you want auto-join
-      }
+    if (typeof window === 'undefined') return
+
+    // 1) Prefer Telegram start_param when WebApp opened via deep link
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
+    if (startParam) {
+      setInviteCode(startParam)
+      return
+    }
+
+    // 2) Fallback to query param (useful for local dev in browser)
+    const params = new URLSearchParams(window.location.search)
+    const inviteParam = params.get('invite')
+    if (inviteParam) {
+      setInviteCode(inviteParam)
+      // Optionally auto-join if code is provided
+      // handleJoin() // Uncomment if you want auto-join
     }
   }, [])
 
@@ -45,9 +54,11 @@ export function PairingScreen() {
 
   const handleShare = () => {
     if (!createdCode) return
-    // Create a direct link that opens the app with pre-filled invite code
+    // Prefer Telegram deep link so recipient opens WebApp with initData
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const inviteLink = `${appUrl}?invite=${createdCode}`
+    const inviteLink = botUsername
+      ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
+      : `${appUrl}?invite=${createdCode}`
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join me in S&O!')}`
     
     if (window.Telegram?.WebApp) {
@@ -60,7 +71,9 @@ export function PairingScreen() {
   const handleCopyLink = async () => {
     if (!createdCode) return
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    const inviteLink = `${appUrl}?invite=${createdCode}`
+    const inviteLink = botUsername
+      ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
+      : `${appUrl}?invite=${createdCode}`
     
     try {
         await navigator.clipboard.writeText(inviteLink)
@@ -110,12 +123,20 @@ export function PairingScreen() {
                </div>
                <div className="mb-4">
                    <a 
-                       href={typeof window !== 'undefined' ? `${window.location.origin}?invite=${createdCode}` : '#'}
+                       href={typeof window !== 'undefined'
+                        ? (botUsername
+                          ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
+                          : `${window.location.origin}?invite=${createdCode}`)
+                        : '#'}
                        target="_blank"
                        rel="noopener noreferrer"
                        className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
                    >
-                       {typeof window !== 'undefined' ? `${window.location.origin}?invite=${createdCode}` : ''}
+                       {typeof window !== 'undefined'
+                        ? (botUsername
+                          ? `https://t.me/${botUsername}/app?startapp=${createdCode}`
+                          : `${window.location.origin}?invite=${createdCode}`)
+                        : ''}
                    </a>
                </div>
                
