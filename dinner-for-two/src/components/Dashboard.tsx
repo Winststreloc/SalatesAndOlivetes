@@ -56,7 +56,7 @@ export function Dashboard() {
   const [showSettings, setShowSettings] = useState(false)
   const [couplePreferences, setCouplePreferences] = useState<{ useAI?: boolean }>({ useAI: true })
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false)
-  const [showPurchasedItems, setShowPurchasedItems] = useState(false)
+  const [showPurchasedItems, setShowPurchasedItems] = useState<Record<string, boolean>>({})
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const channelRef = useRef<any>(null)
   const isMountedRef = useRef(true)
@@ -1706,17 +1706,17 @@ export function Dashboard() {
                            {purchased.length > 0 && (
                              <div className="mb-3">
                                <button
-                                 onClick={() => setShowPurchasedItems(!showPurchasedItems)}
+                                 onClick={() => setShowPurchasedItems(prev => ({ ...prev, [category]: !prev[category] }))}
                                  className="flex items-center justify-between w-full px-2 py-1 text-xs font-medium text-muted-foreground opacity-70 hover:opacity-100 transition-opacity"
                                >
                                  <span>{t.purchased} ({purchased.length})</span>
-                                 {showPurchasedItems ? (
+                                 {showPurchasedItems[category] ? (
                                    <ChevronUp className="w-4 h-4" />
                                  ) : (
                                    <ChevronDown className="w-4 h-4" />
                                  )}
                                </button>
-                               {showPurchasedItems && (
+                               {showPurchasedItems[category] && (
                                  <div className="space-y-2 mt-1">
                                  {purchased.map((item, idx) => (
                                    <div key={`${category}-purchased-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border opacity-75">
@@ -1898,17 +1898,17 @@ export function Dashboard() {
                            {purchased.length > 0 && (
                              <div className="mb-4">
                                <button
-                                 onClick={() => setShowPurchasedItems(!showPurchasedItems)}
+                                 onClick={() => setShowPurchasedItems(prev => ({ ...prev, 'flat-list': !prev['flat-list'] }))}
                                  className="flex items-center justify-between w-full px-2 py-2 text-sm font-semibold text-muted-foreground opacity-70 hover:opacity-100 transition-opacity"
                                >
                                  <span>{t.purchased} ({purchased.length})</span>
-                                 {showPurchasedItems ? (
+                                 {showPurchasedItems['flat-list'] ? (
                                    <ChevronUp className="w-4 h-4" />
                                  ) : (
                                    <ChevronDown className="w-4 h-4" />
                                  )}
                                </button>
-                               {showPurchasedItems && (
+                               {showPurchasedItems['flat-list'] && (
                                  <div className="space-y-2 mt-2">
                                  {purchased.map((item, idx) => (
                                    <div key={`purchased-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border opacity-75">
