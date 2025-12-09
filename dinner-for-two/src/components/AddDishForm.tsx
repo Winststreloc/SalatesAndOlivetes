@@ -26,8 +26,8 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
       // Pass dish to onAdded for optimistic update
       onAdded(dish) 
       
-      // 2. Async generate with LANGUAGE (don't wait)
-      generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
+      // 2. Async generate with LANGUAGE 
+      await generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
         console.error('Failed to generate ingredients:', err)
         const errorMessage = err?.message || ''
         const isValidationError = errorMessage.includes('valid dish name') || 
