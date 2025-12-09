@@ -456,7 +456,7 @@ export function Dashboard() {
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
     const inviteLink = `${appUrl}?invite=${inviteCode}`
     const inviteText = `Join me in S&O! Click the link: ${inviteLink}`
-    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join me in S&O!')}`
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteText)}`
     
     if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.openTelegramLink(url)
@@ -1029,14 +1029,15 @@ export function Dashboard() {
                            {inviteCode || '...'}
                        </div>
                        <div className="mb-4">
-                           <a 
-                               href={typeof window !== 'undefined' ? `${window.location.origin}?invite=${inviteCode}` : '#'}
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
-                           >
-                               {typeof window !== 'undefined' ? `${window.location.origin}?invite=${inviteCode}` : ''}
-                           </a>
+                       <a 
+                           href={inviteCode ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${inviteCode}` : '#'}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
+                       >
+                         {inviteCode ? `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME}?start=${inviteCode}` : ''}
+                       </a>
+                           
                        </div>
                        <Button className="w-full flex items-center gap-2 mb-2" onClick={handleShare}>
                          <Share2 className="w-4 h-4" />
