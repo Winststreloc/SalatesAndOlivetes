@@ -23,13 +23,18 @@ export function PairingScreen() {
 
     // 1) Prefer Telegram start_param when WebApp opened via deep link
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
+    const skipAutoJoin = typeof window !== 'undefined' && localStorage.getItem('skipAutoJoinOnce')
     if (startParam) {
       setInviteCode(startParam)
       // Auto-join when code is provided via start_param
-      joinCouple(startParam).catch((e: any) => {
-        console.error('Failed to auto-join:', e)
-        showToast.error(t.invalidCode)
-      })
+      if (!skipAutoJoin) {
+        joinCouple(startParam).catch((e: any) => {
+          console.error('Failed to auto-join:', e)
+          showToast.error(t.invalidCode)
+        })
+      } else {
+        localStorage.removeItem('skipAutoJoinOnce')
+      }
       return
     }
 

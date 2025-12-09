@@ -1011,6 +1011,10 @@ export function Dashboard() {
                   description: t.logoutConfirm || 'Are you sure you want to leave the couple? You will need to create or join a new couple.',
                   onConfirm: async () => {
                     setConfirmDialog(null)
+                    if (typeof window !== 'undefined') {
+                      // Prevent auto re-join when WebApp still has start_param
+                      localStorage.setItem('skipAutoJoinOnce', '1')
+                    }
                     await logout()
                   }
                 })
