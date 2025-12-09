@@ -42,15 +42,6 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
       setUseAI(couplePrefs.useAI !== false)
     }
     loadData()
-    
-    // Update useAI periodically to catch changes from settings
-    const interval = setInterval(() => {
-      getCouplePreferences().then(prefs => {
-        setUseAI(prefs.useAI !== false)
-      })
-    }, 2000) // Check every 2 seconds
-    
-    return () => clearInterval(interval)
   }, [])
 
   const handleSave = async () => {
