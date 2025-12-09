@@ -138,7 +138,8 @@ const translations = {
     tomorrow: "Tomorrow",
     yesterday: "Yesterday",
     edit: "Edit",
-    recipePlaceholder: "Describe how to cook this dish..."
+    recipePlaceholder: "Describe how to cook this dish...",
+    cancel: "Cancel"
   },
   ru: {
     startNew: "Создать пару",
@@ -224,6 +225,7 @@ const translations = {
     yesterday: "Вчера",
     edit: "Редактировать",
     recipePlaceholder: "Опишите, как приготовить это блюдо...",
+    cancel: "Отмена",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",
