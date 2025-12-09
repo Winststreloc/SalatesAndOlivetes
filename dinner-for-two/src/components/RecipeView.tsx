@@ -72,7 +72,7 @@ export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }:
         </DialogHeader>
         
         <div className="space-y-4">
-            {dish.calories !== undefined && dish.calories !== null && dish.calories !== '' && (
+            {dish.calories !== undefined && dish.calories !== null && (
                 <div className="text-sm text-muted-foreground">
                     {t.calories || 'Calories'}: <span className="font-semibold text-foreground">{dish.calories}</span> kcal
                 </div>
