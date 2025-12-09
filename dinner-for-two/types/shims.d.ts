@@ -18,6 +18,8 @@ declare module 'react' {
     effect: (...args: any[]) => void | (() => void),
     deps?: any[]
   ): void
+  export function createContext<T = any>(defaultValue?: T): any
+  export function useContext<T = any>(ctx: any): T
   export * from 'react/jsx-runtime'
 }
 
