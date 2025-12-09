@@ -101,8 +101,6 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     return { success: false, skipped: true, reason: 'AI_DISABLED' }
   }
   
-  const supabase = await createServerSideClient()
-  
   // Check cache first
   const dishNameLower = dishName.toLowerCase().trim()
   const { data: cached } = await supabase
