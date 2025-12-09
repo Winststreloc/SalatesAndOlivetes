@@ -13,6 +13,7 @@ import { FloatingActionButton } from './FloatingActionButton'
 import { GlobalSearch } from './GlobalSearch'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { useLang } from './LanguageProvider'
@@ -25,7 +26,9 @@ import { createClient } from '@/lib/supabase'
 import { showToast } from '@/utils/toast'
 import { DishSkeleton } from './LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
+import { triggerHaptic } from '@/utils/haptics'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
+import * as Sentry from '@sentry/nextjs'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -163,7 +166,7 @@ export function Dashboard() {
                 table: 'dishes',
                 filter: `couple_id=eq.${coupleId}`
             },
-            (payload: any) => {
+            (payload) => {
                 console.log('🔔 Realtime dishes update:', payload.eventType, payload)
                 
                 // Optimistic updates based on event type
@@ -284,7 +287,7 @@ export function Dashboard() {
                 // Filter by dishes that belong to this couple
                 // Note: We can't filter directly on ingredients, so we refresh dishes
             },
-            (payload: any) => {
+            (payload) => {
                 console.log('🔔 Realtime ingredients update:', payload.eventType, payload)
                 // Ingredients changed - update only the affected dish
                 const dishId = (payload.new as any)?.dish_id || (payload.old as any)?.dish_id
@@ -312,7 +315,7 @@ export function Dashboard() {
                 table: 'manual_ingredients',
                 filter: `couple_id=eq.${coupleId}`
             },
-            (payload: any) => {
+            (payload) => {
                 console.log('🔔 Realtime manual ingredients update:', payload.eventType, payload)
                 // Manual ingredients changed - update only the changed item
                 if (payload.eventType === 'INSERT') {
@@ -351,7 +354,7 @@ export function Dashboard() {
                 }
             }
         )
-        .subscribe((status: any) => {
+        .subscribe((status) => {
             console.log('📡 Realtime subscription status:', status)
             if (isMountedRef.current) {
               setIsRealtimeConnected(status === 'SUBSCRIBED')
@@ -1160,7 +1163,7 @@ export function Dashboard() {
                                        {dishesByDay[dayIndex].map((dish, index) => {
                                            // Create swipe handlers without using hook (hooks can't be called in loops)
                                            const swipeHandlers = {
-                                             onTouchStart: (e: any) => {
+                                             onTouchStart: (e: React.TouchEvent) => {
                                                const touch = e.touches[0]
                                                const startX = touch.clientX
                                                const startY = touch.clientY
@@ -1196,10 +1199,10 @@ export function Dashboard() {
                                              }
                                            }
                                            
-                                          return (
-                                          <Draggable draggableId={dish.id} index={index}>
+                                           return (
+                                           <Draggable key={dish.id} draggableId={dish.id} index={index}>
                                                {(provided: any) => (
-                                                  <div
+                                                   <div
                                                        ref={provided.innerRef}
                                                        {...provided.draggableProps}
                                                        {...provided.dragHandleProps}
@@ -1222,7 +1225,7 @@ export function Dashboard() {
                                                                ) && (
                                                                    <button 
                                                                      className="text-muted-foreground hover:text-green-500"
-                                                                     onPointerDown={(e: any) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
+                                                                     onPointerDown={(e) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
                                                                      title={t.approve}
                                                                    >
                                                                        <CheckCircle2 className="h-5 w-5" />
@@ -1237,7 +1240,7 @@ export function Dashboard() {
                                                                ) && (
                                                                    <button 
                                                                      className="text-green-500 hover:text-orange-500"
-                                                                     onPointerDown={(e: any) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
+                                                                     onPointerDown={(e) => { e.stopPropagation(); handleToggleDish(dish.id, dish.status) }}
                                                                      title={t.unapprove}
                                                                    >
                                                                        <CheckCircle2 className="h-5 w-5" />
@@ -1246,7 +1249,7 @@ export function Dashboard() {
                                                                <button 
                                                                   onClick={() => handleDeleteDish(dish.id)}
                                                                   className="text-muted-foreground hover:text-red-500 min-h-[44px] min-w-[44px] touch-manipulation flex items-center justify-center"
-                                                                  onPointerDown={(e: any) => e.stopPropagation()}
+                                                                  onPointerDown={(e) => e.stopPropagation()}
                                                                >
                                                                    <Trash2 className="h-4 w-4" />
                                                                </button>
@@ -1337,13 +1340,13 @@ export function Dashboard() {
                        <Input
                          placeholder={t.search}
                          value={searchQuery}
-                        onChange={(e: any) => setSearchQuery(e.target.value)}
+                         onChange={(e) => setSearchQuery(e.target.value)}
                          className="pl-10"
                        />
                      </div>
                      <Select
                        value={sortBy}
-                       onChange={(e: any) => setSortBy(e.target.value as 'alphabetical' | 'category' | 'amount')}
+                       onChange={(e) => setSortBy(e.target.value as 'alphabetical' | 'category' | 'amount')}
                        className="w-auto min-w-[140px]"
                      >
                        <option value="category">{t.sortCategory}</option>

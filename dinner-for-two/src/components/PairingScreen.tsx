@@ -15,7 +15,6 @@ export function PairingScreen() {
   const [inviteCode, setInviteCode] = useState('')
   const [createdCode, setCreatedCode] = useState<string | null>(null)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
-  const isTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp
 
   // Check for invite parameter in URL
   useEffect(() => {
@@ -28,20 +27,11 @@ export function PairingScreen() {
       return
     }
 
-    // 2) Fallback to query params (useful for local dev or if user tapped link in browser)
+    // 2) Fallback to query param (useful for local dev in browser)
     const params = new URLSearchParams(window.location.search)
-    const startAppParam = params.get('startapp')
     const inviteParam = params.get('invite')
-    const param = startAppParam || inviteParam
-
-    if (param) {
-      setInviteCode(param)
-
-      // If opened in external browser, try to bounce into Telegram app
-      if (!isTelegram && botUsername) {
-        const tgDeepLink = `tg://resolve?domain=${botUsername}&startapp=${param}`
-        window.location.href = tgDeepLink
-      }
+    if (inviteParam) {
+      setInviteCode(inviteParam)
       // Optionally auto-join if code is provided
       // handleJoin() // Uncomment if you want auto-join
     }
@@ -57,7 +47,7 @@ export function PairingScreen() {
   const handleJoin = async () => {
     try {
         await joinCouple(inviteCode)
-    } catch (e: unknown) {
+    } catch (e) {
         showToast.error(t.invalidCode)
     }
   }
@@ -78,7 +68,6 @@ export function PairingScreen() {
     }
   }
 
-  
   const handleCopyLink = async () => {
     if (!createdCode) return
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -89,7 +78,7 @@ export function PairingScreen() {
     try {
         await navigator.clipboard.writeText(inviteLink)
         showToast.success(t.copied)
-    } catch (e: unknown) {
+    } catch (e) {
         // Fallback for older browsers
         const textArea = document.createElement('textarea')
         textArea.value = inviteLink
@@ -121,7 +110,7 @@ export function PairingScreen() {
                  <Input 
                    placeholder={t.enterCode}
                    value={inviteCode} 
-                  onChange={(e: any) => setInviteCode(e.target.value)} 
+                   onChange={(e) => setInviteCode(e.target.value)} 
                  />
                  <Button variant="outline" onClick={handleJoin}>{t.join}</Button>
                </div>
@@ -149,7 +138,7 @@ export function PairingScreen() {
                           : `${window.location.origin}?invite=${createdCode}`)
                         : ''}
                    </a>
-               </div> 
+               </div>
                
                <Button className="w-full mt-4 flex items-center gap-2" onClick={handleShare}>
                  <Share2 className="w-4 h-4" />

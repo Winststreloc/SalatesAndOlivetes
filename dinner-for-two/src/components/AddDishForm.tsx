@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import type React from 'react'
 import { addDish, generateDishIngredients, deleteDish } from '@/app/actions'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { Button } from '@/components/ui/button'
@@ -78,7 +77,7 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
         autoFocus
         placeholder={t.addDishPlaceholder}
         value={name}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+        onChange={(e) => setName(e.target.value)}
         disabled={loading}
         className="bg-card"
       />
