@@ -3,7 +3,7 @@
  * Provides structured logging for development with different log levels
  */
 
-const isDev = process.env.NODE_ENV === 'development'
+const isDev = true;//process.env.NODE_ENV === 'development'
 
 type LogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug'
 
