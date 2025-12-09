@@ -453,7 +453,7 @@ export function Dashboard() {
     const inviteLink = buildBotLink(inviteCode)
     if (!inviteLink) return
     const inviteText = `Join me in S&O! Click the link: ${inviteLink}`
-    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteText)}`
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${inviteText}`
     
     if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.openTelegramLink(url)
