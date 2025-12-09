@@ -490,7 +490,7 @@ export function Dashboard() {
   // Link to open WebApp directly with startapp param (Telegram will open bot WebApp)
   const buildAppLink = (code?: string | null) => {
     if (!code || !botUsername) return ''
-    return `https://t.me/${botUsername}/app?startapp=${code}`
+    return `https://t.me/@${botUsername}/app?startapp=${code}`
   }
 
   const handleConfirmAddIdea = async (day: number) => {
