@@ -19,7 +19,7 @@ import { Select } from '@/components/ui/select'
 import { useLang } from './LanguageProvider'
 import { useAuth } from './AuthProvider'
 import { useTheme } from './ThemeProvider'
-import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff, Search, History, Moon, Sun, Download, Edit2, X, Settings } from 'lucide-react'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff, Search, History, Moon, Sun, Download, Edit2, X, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { groupByCategory, IngredientCategory, CategorizedIngredient } from '@/utils/ingredientCategories'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
@@ -56,6 +56,7 @@ export function Dashboard() {
   const [showSettings, setShowSettings] = useState(false)
   const [couplePreferences, setCouplePreferences] = useState<{ useAI?: boolean }>({ useAI: true })
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(false)
+  const [showPurchasedItems, setShowPurchasedItems] = useState(false)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const channelRef = useRef<any>(null)
   const isMountedRef = useRef(true)
@@ -1696,10 +1697,19 @@ export function Dashboard() {
                            {/* Purchased items */}
                            {purchased.length > 0 && (
                              <div className="mb-3">
-                               <h4 className="text-xs font-medium text-muted-foreground mb-1 px-2 opacity-70">
-                                 {t.purchased}
-                               </h4>
-                               <div className="space-y-2">
+                               <button
+                                 onClick={() => setShowPurchasedItems(!showPurchasedItems)}
+                                 className="flex items-center justify-between w-full px-2 py-1 text-xs font-medium text-muted-foreground opacity-70 hover:opacity-100 transition-opacity"
+                               >
+                                 <span>{t.purchased} ({purchased.length})</span>
+                                 {showPurchasedItems ? (
+                                   <ChevronUp className="w-4 h-4" />
+                                 ) : (
+                                   <ChevronDown className="w-4 h-4" />
+                                 )}
+                               </button>
+                               {showPurchasedItems && (
+                                 <div className="space-y-2 mt-1">
                                  {purchased.map((item, idx) => (
                                    <div key={`${category}-purchased-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border opacity-75">
                                      {editingIngredient?.id === `${category}-purchased-${idx}` ? (
@@ -1775,7 +1785,8 @@ export function Dashboard() {
                                      )}
                                    </div>
                                  ))}
-                               </div>
+                                 </div>
+                               )}
                              </div>
                            )}
                          </div>
@@ -1878,10 +1889,19 @@ export function Dashboard() {
                            {/* Purchased items */}
                            {purchased.length > 0 && (
                              <div className="mb-4">
-                               <h3 className="font-semibold text-sm text-muted-foreground mb-2 px-2 opacity-70">
-                                 {t.purchased}
-                               </h3>
-                               <div className="space-y-2">
+                               <button
+                                 onClick={() => setShowPurchasedItems(!showPurchasedItems)}
+                                 className="flex items-center justify-between w-full px-2 py-2 text-sm font-semibold text-muted-foreground opacity-70 hover:opacity-100 transition-opacity"
+                               >
+                                 <span>{t.purchased} ({purchased.length})</span>
+                                 {showPurchasedItems ? (
+                                   <ChevronUp className="w-4 h-4" />
+                                 ) : (
+                                   <ChevronDown className="w-4 h-4" />
+                                 )}
+                               </button>
+                               {showPurchasedItems && (
+                                 <div className="space-y-2 mt-2">
                                  {purchased.map((item, idx) => (
                                    <div key={`purchased-${idx}`} className="p-3 bg-card rounded shadow-sm border border-border opacity-75">
                                      {editingIngredient?.id === `purchased-${idx}` ? (
@@ -1957,7 +1977,8 @@ export function Dashboard() {
                                      )}
                                    </div>
                                  ))}
-                               </div>
+                                 </div>
+                               )}
                              </div>
                            )}
                          </>
@@ -1966,8 +1987,8 @@ export function Dashboard() {
                    )}
                  </>
                )}
-            </div>
-          )}
+             </div>
+           )}
        </div>
        
        <div className="fixed bottom-0 left-0 right-0 border-t border-border p-2 bg-card shadow-up z-20">
