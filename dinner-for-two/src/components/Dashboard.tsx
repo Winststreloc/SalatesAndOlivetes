@@ -1076,9 +1076,6 @@ export function Dashboard() {
              )}
          </div>
          <div className="flex items-center space-x-1">
-             <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
-                {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
-             </Button>
              <Button variant="ghost" size="icon" onClick={() => setShowSettings(true)}>
                 <Settings className="h-4 w-4" />
              </Button>
@@ -1175,6 +1172,16 @@ export function Dashboard() {
                                <Button variant="outline" size="sm" onClick={toggleTheme} className="flex items-center gap-2">
                                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                                    <span>{theme === 'dark' ? (t.darkMode || 'Dark') : (t.lightMode || 'Light')}</span>
+                               </Button>
+                           </div>
+                           <div className="flex items-center justify-between pt-2 border-t">
+                               <div className="flex items-center space-x-2">
+                                   <Label className="font-medium">
+                                       {t.language || 'Language'}
+                                   </Label>
+                               </div>
+                               <Button variant="outline" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')} className="flex items-center gap-2">
+                                   <span>{lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}</span>
                                </Button>
                            </div>
                        </div>

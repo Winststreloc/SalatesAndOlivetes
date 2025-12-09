@@ -133,6 +133,7 @@ const translations = {
     theme: "Theme",
     darkMode: "Dark",
     lightMode: "Light",
+    language: "Language",
     today: "Today",
     tomorrow: "Tomorrow",
     yesterday: "Yesterday"
@@ -215,6 +216,7 @@ const translations = {
     theme: "Тема",
     darkMode: "Темная",
     lightMode: "Светлая",
+    language: "Язык",
     today: "Сегодня",
     tomorrow: "Завтра",
     yesterday: "Вчера",
