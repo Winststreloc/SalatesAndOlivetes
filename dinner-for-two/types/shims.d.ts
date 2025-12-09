@@ -13,7 +13,7 @@ declare module 'react' {
   export default React
   export function useState<S = undefined>(
     initialState?: S
-  ): [S, (value: S) => void]
+  ): [S, (value: S | ((prev: S) => S)) => void]
   export function useEffect(
     effect: (...args: any[]) => void | (() => void),
     deps?: any[]
