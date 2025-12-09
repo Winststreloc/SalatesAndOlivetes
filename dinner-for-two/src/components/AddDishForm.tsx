@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { addDish, generateDishIngredients, deleteDish } from '@/app/actions'
+import { addDish, generateDishIngredients, deleteDish, getDish } from '@/app/actions'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,7 +33,27 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
         dishName: dish.name,
         lang
       })
-      await generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
+      generateDishIngredients(dish.id, dish.name, lang).then(async () => {
+        // After successful generation, fetch updated dish with ingredients
+        logger.info('Ingredients generated successfully, fetching updated dish', {
+          dishId: dish.id
+        })
+        try {
+          const updatedDish = await getDish(dish.id)
+          if (updatedDish) {
+            logger.info('Dish updated with ingredients', {
+              dishId: updatedDish.id,
+              ingredientsCount: updatedDish.ingredients?.length || 0
+            })
+            // Update dish with ingredients via callback
+            onAdded(updatedDish)
+          }
+        } catch (fetchErr) {
+          logger.error('Failed to fetch updated dish after ingredient generation', fetchErr, {
+            dishId: dish.id
+          })
+        }
+      }).catch(async (err) => {
         logger.error('Failed to generate ingredients', err, {
           dishId: dish.id,
           dishName: dish.name
