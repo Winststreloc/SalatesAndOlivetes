@@ -78,6 +78,7 @@ export function PairingScreen() {
     }
   }
 
+  
   const handleCopyLink = async () => {
     if (!createdCode) return
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
