@@ -409,6 +409,52 @@ export async function moveDish(dishId: string, date: string) {
   revalidatePath('/')
 }
 
+export async function updateRecipe(dishId: string, recipe: string) {
+  const user = await getUserFromSession()
+  if (!user) {
+    const error = new Error('Unauthorized: Please log in')
+    handleError(error, createErrorContext('updateRecipe', {
+      type: 'AUTH_ERROR',
+      showToast: false,
+    }))
+    throw error
+  }
+  if (!user.couple_id) {
+    const error = new Error('Unauthorized: Please create or join a couple first')
+    handleError(error, createErrorContext('updateRecipe', {
+      type: 'AUTH_ERROR',
+      userId: String(user.telegram_id),
+      showToast: false,
+    }))
+    throw error
+  }
+  
+  const supabase = await createServerSideClient()
+  
+  const { data, error } = await supabase
+    .from('dishes')
+    .update({ recipe })
+    .eq('id', dishId)
+    .eq('couple_id', user.couple_id)
+    .select()
+    .single()
+
+  if (error) {
+    const dbError = new Error(error.message)
+    handleError(dbError, createErrorContext('updateRecipe', {
+      type: 'DATABASE_ERROR',
+      userId: String(user.telegram_id),
+      coupleId: user.couple_id,
+      metadata: { dishId, recipeLength: recipe?.length || 0 },
+      showToast: true,
+    }))
+    throw dbError
+  }
+    
+  revalidatePath('/')
+  return data
+}
+
 export async function toggleIngredientsPurchased(ingredientIds: string[], isPurchased: boolean) {
    const user = await getUserFromSession()
    if (!user) {

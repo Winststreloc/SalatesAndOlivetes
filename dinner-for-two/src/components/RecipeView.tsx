@@ -4,11 +4,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { useLang } from './LanguageProvider'
 import ReactMarkdown from 'react-markdown'
+import { Textarea } from '@/components/ui/textarea'
+import { useEffect, useState } from 'react'
 
-export function RecipeView({ dish, isOpen, onClose }: { dish: any, isOpen: boolean, onClose: () => void }) {
+export function RecipeView({ dish, isOpen, onClose, onSave }: { dish: any, isOpen: boolean, onClose: () => void, onSave: (recipe: string) => Promise<void> | void }) {
   const { t } = useLang()
+  const [editMode, setEditMode] = useState(false)
+  const [recipeText, setRecipeText] = useState(dish?.recipe || '')
+  const [saving, setSaving] = useState(false)
+  
+  useEffect(() => {
+    if (dish && !editMode) {
+      setRecipeText(dish.recipe || '')
+    }
+  }, [dish, editMode])
   
   if (!dish) return null
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await onSave(recipeText)
+      setEditMode(false)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -30,8 +51,33 @@ export function RecipeView({ dish, isOpen, onClose }: { dish: any, isOpen: boole
             </div>
             
             <div>
-                <h3 className="font-semibold mb-2 text-foreground">Recipe</h3>
-                {dish.recipe ? (
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-foreground">Recipe</h3>
+                    {!editMode ? (
+                      <Button variant="ghost" size="sm" onClick={() => setEditMode(true)}>
+                        {t.edit || 'Edit'}
+                      </Button>
+                    ) : null}
+                </div>
+                {editMode ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={recipeText}
+                      onChange={(e) => setRecipeText(e.target.value)}
+                      rows={10}
+                      placeholder={t.recipePlaceholder || 'Describe how to cook this dish...'}
+                      className="text-sm"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => { setRecipeText(dish.recipe || ''); setEditMode(false) }}>
+                        {t.cancel || 'Cancel'}
+                      </Button>
+                      <Button onClick={handleSave} disabled={saving}>
+                        {saving ? t.saving || 'Saving...' : (t.save || 'Save')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : dish.recipe ? (
                     <div className="text-sm leading-relaxed prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown
                             components={{
@@ -52,9 +98,14 @@ export function RecipeView({ dish, isOpen, onClose }: { dish: any, isOpen: boole
                         </ReactMarkdown>
                     </div>
                 ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                        {t.generating || 'Recipe not available yet...'}
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground italic">
+                          {t.generating || 'Recipe not available yet...'}
+                      </p>
+                      <Button variant="outline" size="sm" onClick={() => setEditMode(true)}>
+                        {t.add || 'Add'}
+                      </Button>
+                    </div>
                 )}
             </div>
         </div>

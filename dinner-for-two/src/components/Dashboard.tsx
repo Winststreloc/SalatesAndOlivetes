@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner, getCouplePreferences, updateCouplePreferences } from '@/app/actions'
+import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner, getCouplePreferences, updateCouplePreferences, updateRecipe } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
@@ -556,6 +556,24 @@ export function Dashboard() {
       setPendingIdea(name)
       setShowDaySelector(true)
   }
+
+  const handleSaveRecipe = useCallback(async (dishId: string, recipe: string) => {
+      try {
+        const updated = await updateRecipe(dishId, recipe)
+        if (isMountedRef.current) {
+          setDishes((prev: any[]) => prev.map(d => d.id === dishId ? { ...d, recipe: updated.recipe } : d))
+          setSelectedDish((prev: any) => prev && prev.id === dishId ? { ...prev, recipe: updated.recipe } : prev)
+        }
+        showToast.success(t.settingsSaved || 'Saved successfully')
+      } catch (error: any) {
+        handleError(error, createErrorContext('handleSaveRecipe', {
+          type: 'DATABASE_ERROR',
+          userId: undefined,
+          metadata: { dishId, recipeLength: recipe?.length || 0 },
+          showToast: true,
+        }))
+      }
+  }, [t])
 
   // Link to open WebApp directly with startapp param (Telegram will open bot WebApp)
   const buildAppLink = (code?: string | null) => {
@@ -1213,7 +1231,15 @@ export function Dashboard() {
            </div>
        )}
        
-       <RecipeView dish={selectedDish} isOpen={!!selectedDish} onClose={() => setSelectedDish(null)} />
+      <RecipeView 
+        dish={selectedDish} 
+        isOpen={!!selectedDish} 
+        onClose={() => setSelectedDish(null)} 
+        onSave={async (recipe) => {
+          if (!selectedDish) return
+          await handleSaveRecipe(selectedDish.id, recipe)
+        }}
+      />
 
        <GlobalSearch
          dishes={dishes}
@@ -1291,8 +1317,8 @@ export function Dashboard() {
           {tab === 'plan' && (
             isLoadingDishes ? (
               <div className="space-y-6">
-                {[0, 1, 2, 3, 4, 5, 6].map(dayIndex => (
-                  <div key={dayIndex} className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+                {orderedDates.map(date => (
+                  <div key={date} className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
                     <div className="bg-muted p-3 font-semibold text-foreground">
                       <Skeleton className="h-5 w-24" />
                     </div>
