@@ -9,7 +9,8 @@ import { DishSkeleton } from '../LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLang } from '../LanguageProvider'
 import { formatDate, getWeekDates } from '@/utils/dateUtils'
-import { Dish, DragResult, DroppableProvided, DraggableProvided, Ingredient } from '@/types'
+import { Dish, Ingredient } from '@/types'
+import type { DropResult, DroppableProvided, DraggableProvided } from '@hello-pangea/dnd'
 import { toggleDishSelection, moveDish, deleteDish } from '@/app/actions'
 import { showToast } from '@/utils/toast'
 import { logger } from '@/utils/logger'
@@ -73,7 +74,7 @@ export function PlanTab({
     return groups
   }, [dishes, orderedDates])
 
-  const onDragEnd = async (result: DragResult) => {
+  const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return
     const sourceDate = result.source.droppableId
     const destDate = result.destination.droppableId

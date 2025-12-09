@@ -1,5 +1,3 @@
-'use client'
-
 export type DishStatus = 'proposed' | 'selected' | 'purchased'
 
 export interface Ingredient {
@@ -87,32 +85,7 @@ export type RealtimeChannel = {
   unsubscribe: () => void
 }
 
-// Drag and Drop types
-export interface DragResult {
-  draggableId: string
-  type: string
-  source: {
-    droppableId: string
-    index: number
-  }
-  destination?: {
-    droppableId: string
-    index: number
-  } | null
-  reason: string
-}
-
-// Droppable/Draggable provided props
-export interface DroppableProvided {
-  innerRef: (element: HTMLElement | null) => void
-  droppableProps: Record<string, unknown>
-  placeholder: React.ReactElement | null
-}
-
-export interface DraggableProvided {
-  innerRef: (element: HTMLElement | null) => void
-  draggableProps: Record<string, unknown>
-  dragHandleProps: Record<string, unknown> | null
-}
+// Drag and Drop types - re-export from @hello-pangea/dnd for convenience
+export type { DropResult as DragResult, DroppableProvided, DraggableProvided } from '@hello-pangea/dnd'
 
 
