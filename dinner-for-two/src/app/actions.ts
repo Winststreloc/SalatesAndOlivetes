@@ -336,6 +336,10 @@ export async function toggleDishSelection(dishId: string, isSelected: boolean) {
     throw new Error('Unauthorized: Please create or join a couple first')
   }
   
+  // Determine whether the user actually has a partner in the couple.
+  // If the user is alone, allow self-approval for solo mode.
+  const partnerExists = await hasPartner()
+  
   const supabase = await createServerSideClient()
   
   // Get dish to check if user is the creator
@@ -350,8 +354,9 @@ export async function toggleDishSelection(dishId: string, isSelected: boolean) {
     throw new Error('Dish not found')
   }
   
-  // Only partner (not creator) can approve/disapprove
-  if (dish.created_by === user.telegram_id) {
+  // Only partner (not creator) can approve/disapprove when a partner exists.
+  // In solo mode (no partner), allow creator to approve/unapprove.
+  if (partnerExists && dish.created_by === user.telegram_id) {
     throw new Error('You cannot approve your own dish. Only your partner can approve it.')
   }
   
