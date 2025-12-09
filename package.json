@@ -1,4 +1,11 @@
 {
+  "private": true,
+  "scripts": {
+    "dev": "cd dinner-for-two && npm run dev",
+    "build": "cd dinner-for-two && npm run build",
+    "start": "cd dinner-for-two && npm run start",
+    "lint": "cd dinner-for-two && npm run lint"
+  },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "@radix-ui/react-dialog": "^1.1.15",
