@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner } from '@/app/actions'
+import { getDishes, getDish, toggleDishSelection, toggleIngredientsPurchased, deleteDish, getInviteCode, moveDish, addDish, generateDishIngredients, getWeeklyPlans, saveWeeklyPlan, loadWeeklyPlan, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, getManualIngredients, hasPartner, getCouplePreferences, updateCouplePreferences } from '@/app/actions'
 import { Button } from '@/components/ui/button'
 import { AddDishForm } from './AddDishForm'
 import { IdeasTab } from './IdeasTab'
@@ -19,7 +19,7 @@ import { Select } from '@/components/ui/select'
 import { useLang } from './LanguageProvider'
 import { useAuth } from './AuthProvider'
 import { useTheme } from './ThemeProvider'
-import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff, Search, History, Moon, Sun, Download, Edit2, X } from 'lucide-react'
+import { Trash2, Key, Share2, Loader2, Plus, Calendar, CheckCircle2, Lightbulb, BookOpen, LogOut, Wifi, WifiOff, Search, History, Moon, Sun, Download, Edit2, X, Settings } from 'lucide-react'
 import { groupByCategory, IngredientCategory, CategorizedIngredient } from '@/utils/ingredientCategories'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { createClient } from '@/lib/supabase'
@@ -52,6 +52,9 @@ export function Dashboard() {
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean, title: string, description: string, onConfirm: () => void } | null>(null)
   const [isLoadingDishes, setIsLoadingDishes] = useState(true)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [couplePreferences, setCouplePreferences] = useState<{ useAI?: boolean }>({ useAI: true })
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const channelRef = useRef<any>(null)
   const isMountedRef = useRef(true)
@@ -116,6 +119,35 @@ export function Dashboard() {
       }
   }, [])
 
+  const loadCouplePreferences = useCallback(async () => {
+      if (!isMountedRef.current || !coupleId) return
+      try {
+        const prefs = await getCouplePreferences()
+        if (isMountedRef.current) {
+          setCouplePreferences(prefs)
+        }
+      } catch (error) {
+        console.error('Failed to load couple preferences:', error)
+      }
+  }, [coupleId])
+
+  const handleSavePreferences = useCallback(async () => {
+      if (!coupleId) return
+      setIsLoadingPreferences(true)
+      try {
+        await updateCouplePreferences(couplePreferences)
+        showToast.success(t.settingsSaved || 'Settings saved successfully')
+        setShowSettings(false)
+      } catch (error) {
+        handleError(error as Error, createErrorContext('handleSavePreferences', {
+          type: 'API_ERROR',
+          showToast: true,
+        }))
+      } finally {
+        setIsLoadingPreferences(false)
+      }
+  }, [coupleId, couplePreferences, t])
+
   useEffect(() => {
     isMountedRef.current = true
     
@@ -137,7 +169,8 @@ export function Dashboard() {
           refreshDishes(),
           loadInviteCode(),
           loadManualIngredients(),
-          checkHasPartner()
+          checkHasPartner(),
+          loadCouplePreferences()
         ])
       } catch (error) {
         console.error('Failed to load initial data:', error)
@@ -166,7 +199,7 @@ export function Dashboard() {
                 table: 'dishes',
                 filter: `couple_id=eq.${coupleId}`
             },
-            (payload) => {
+            (payload: any) => {
                 console.log('🔔 Realtime dishes update:', payload.eventType, payload)
                 
                 // Optimistic updates based on event type
@@ -287,7 +320,7 @@ export function Dashboard() {
                 // Filter by dishes that belong to this couple
                 // Note: We can't filter directly on ingredients, so we refresh dishes
             },
-            (payload) => {
+            (payload: any) => {
                 // Log full payload structure for debugging
                 logger.info('🔔 Realtime ingredients event received', {
                   eventType: payload.eventType,
@@ -346,7 +379,7 @@ export function Dashboard() {
                 table: 'manual_ingredients',
                 filter: `couple_id=eq.${coupleId}`
             },
-            (payload) => {
+            (payload: any) => {
                 console.log('🔔 Realtime manual ingredients update:', payload.eventType, payload)
                 // Manual ingredients changed - update only the changed item
                 if (payload.eventType === 'INSERT') {
@@ -385,7 +418,7 @@ export function Dashboard() {
                 }
             }
         )
-        .subscribe((status) => {
+        .subscribe((status: string) => {
             logger.info('Realtime subscription status changed', {
               status,
               channel: `dashboard-changes-${coupleId}`,
@@ -557,9 +590,14 @@ export function Dashboard() {
             })
           }
           
-          // Pass LANG here - generate ingredients asynchronously
-          // Ingredients will be added via WebSocket when generated
-          generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
+          // Check if AI is enabled before generating
+          const prefs = await getCouplePreferences()
+          const useAI = prefs.useAI !== false // Default to true if not set
+          
+          if (useAI) {
+            // Pass LANG here - generate ingredients asynchronously
+            // Ingredients will be added via WebSocket when generated
+            generateDishIngredients(dish.id, dish.name, lang).catch(async (err) => {
             console.error('Failed to generate ingredients:', err)
             const errorMessage = err?.message || ''
             const isValidationError = errorMessage.includes('valid dish name') || 
@@ -595,6 +633,12 @@ export function Dashboard() {
               }))
             }
           })
+          } else {
+            logger.info('AI generation disabled, skipping ingredient generation', {
+              dishId: dish.id,
+              dishName: dish.name
+            })
+          }
           
           if (isMountedRef.current) {
             setTab('plan')
@@ -1037,6 +1081,9 @@ export function Dashboard() {
              <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'en' ? 'ru' : 'en')}>
                 {lang === 'en' ? '🇷🇺 RU' : '🇬🇧 EN'}
              </Button>
+             <Button variant="ghost" size="icon" onClick={() => setShowSettings(true)}>
+                <Settings className="h-4 w-4" />
+             </Button>
              <Button variant="ghost" size="icon" onClick={toggleTheme}>
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
              </Button>
@@ -1089,6 +1136,65 @@ export function Dashboard() {
                          {t.copyLink}
                        </Button>
                        <Button variant="ghost" onClick={() => setShowInvite(false)}>{t.close}</Button>
+                   </CardContent>
+               </Card>
+           </div>
+       )}
+
+       {showSettings && (
+           <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+               <Card className="w-full max-w-sm">
+                   <CardHeader>
+                       <div className="flex items-center justify-between">
+                           <h2 className="p-4 font-bold text-lg">{t.coupleSettings}</h2>
+                           <Button variant="ghost" size="icon" onClick={() => setShowSettings(false)}>
+                               <X className="h-4 w-4" />
+                           </Button>
+                       </div>
+                   </CardHeader>
+                   <CardContent className="pb-6">
+                       <div className="space-y-4">
+                           <div className="flex items-start space-x-3">
+                               <Checkbox
+                                   id="useAI"
+                                   checked={couplePreferences.useAI !== false}
+                               onCheckedChange={(checked: boolean) => {
+                                   setCouplePreferences(prev => ({ ...prev, useAI: checked !== false }))
+                               }}
+                               />
+                               <div className="flex-1">
+                                   <Label htmlFor="useAI" className="font-medium cursor-pointer">
+                                       {t.useAIForIngredients}
+                                   </Label>
+                                   <p className="text-sm text-muted-foreground mt-1">
+                                       {t.useAIForIngredientsDesc}
+                                   </p>
+                               </div>
+                           </div>
+                       </div>
+                       <div className="flex gap-2 mt-6">
+                           <Button 
+                               variant="outline" 
+                               className="flex-1" 
+                               onClick={() => setShowSettings(false)}
+                           >
+                               {t.close}
+                           </Button>
+                           <Button 
+                               className="flex-1" 
+                               onClick={handleSavePreferences}
+                               disabled={isLoadingPreferences}
+                           >
+                               {isLoadingPreferences ? (
+                                   <>
+                                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                       {t.saving || 'Saving...'}
+                                   </>
+                               ) : (
+                                   t.save || 'Save'
+                               )}
+                           </Button>
+                       </div>
                    </CardContent>
                </Card>
            </div>

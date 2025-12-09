@@ -81,6 +81,26 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     return { success: false }
   }
   
+  // Check if AI is disabled in couple preferences
+  const supabase = await createServerSideClient()
+  const { data: coupleData } = await supabase
+    .from('couples')
+    .select('preferences')
+    .eq('id', user.couple_id)
+    .single()
+  
+  const couplePrefs = coupleData?.preferences || {}
+  const useAI = couplePrefs.useAI !== false // Default to true if not set
+  
+  if (!useAI) {
+    logger.info('AI generation disabled in couple preferences', {
+      dishId,
+      dishName,
+      coupleId: user.couple_id
+    })
+    return { success: false, skipped: true, reason: 'AI_DISABLED' }
+  }
+  
   const supabase = await createServerSideClient()
   
   // Check cache first
@@ -511,6 +531,36 @@ export async function getPreferences() {
         .single()
         
     return data?.preferences || {}
+}
+
+export async function getCouplePreferences() {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) return { useAI: true }
+    
+    const supabase = await createServerSideClient()
+    const { data } = await supabase
+        .from('couples')
+        .select('preferences')
+        .eq('id', user.couple_id)
+        .single()
+        
+    return data?.preferences || { useAI: true }
+}
+
+export async function updateCouplePreferences(preferences: Record<string, any>) {
+    const user = await getUserFromSession()
+    if (!user || !user.couple_id) {
+        throw new Error('Unauthorized: Please log in and join a couple')
+    }
+    
+    const supabase = await createServerSideClient()
+    const { error } = await supabase
+        .from('couples')
+        .update({ preferences })
+        .eq('id', user.couple_id)
+        
+    if (error) throw new Error(error.message)
+    revalidatePath('/')
 }
 
 export async function generateIdeas(lang: 'en' | 'ru' = 'ru') {

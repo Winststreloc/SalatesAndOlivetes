@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { addDish, generateDishIngredients, deleteDish, getDish } from '@/app/actions'
+import { addDish, generateDishIngredients, deleteDish, getDish, getCouplePreferences } from '@/app/actions'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,19 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
       // Pass dish to onAdded for optimistic update
       onAdded(dish) 
       
-      // 2. Async generate with LANGUAGE 
+      // 2. Check if AI is enabled before generating
+      const prefs = await getCouplePreferences()
+      const useAI = prefs.useAI !== false // Default to true if not set
+      
+      if (!useAI) {
+        logger.info('AI generation disabled, skipping ingredient generation', {
+          dishId: dish.id,
+          dishName: dish.name
+        })
+        return // User can add ingredients manually
+      }
+      
+      // 3. Async generate with LANGUAGE 
       logger.info('Starting ingredient generation', {
         dishId: dish.id,
         dishName: dish.name,

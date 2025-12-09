@@ -13,6 +13,7 @@ export type ErrorType =
   | 'AI_ERROR'
   | 'NETWORK_ERROR'
   | 'REALTIME_ERROR'
+  | 'API_ERROR'
   | 'UNKNOWN_ERROR'
 
 export interface ErrorContext {
