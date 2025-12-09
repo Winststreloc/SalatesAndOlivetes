@@ -30,7 +30,25 @@ declare module 'react' {
 }
 
 declare module 'lucide-react' {
+  export const Trash2: any
+  export const Key: any
   export const Share2: any
+  export const Loader2: any
+  export const Plus: any
+  export const Calendar: any
+  export const CheckCircle2: any
+  export const Lightbulb: any
+  export const BookOpen: any
+  export const LogOut: any
+  export const Wifi: any
+  export const WifiOff: any
+  export const Search: any
+  export const History: any
+  export const Moon: any
+  export const Sun: any
+  export const Download: any
+  export const Edit2: any
+  export const X: any
   const icons: Record<string, any>
   export default icons
 }
