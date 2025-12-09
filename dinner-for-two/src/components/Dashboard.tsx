@@ -26,9 +26,7 @@ import { createClient } from '@/lib/supabase'
 import { showToast } from '@/utils/toast'
 import { DishSkeleton } from './LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
-import { triggerHaptic } from '@/utils/haptics'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
-import * as Sentry from '@sentry/nextjs'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -469,9 +467,11 @@ export function Dashboard() {
     if (!inviteCode) return
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
     const inviteLink = `${appUrl}?invite=${inviteCode}`
+    const inviteText = `Join me in S&O! Click the link: ${inviteLink}`
+    const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteText)}`
     
     try {
-        await navigator.clipboard.writeText(inviteLink)
+        await navigator.clipboard.writeText(url)
         showToast.success(t.copied)
     } catch (e) {
         // Fallback for older browsers
