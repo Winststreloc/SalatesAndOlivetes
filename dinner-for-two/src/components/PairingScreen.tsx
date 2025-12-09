@@ -15,6 +15,7 @@ export function PairingScreen() {
   const [inviteCode, setInviteCode] = useState('')
   const [createdCode, setCreatedCode] = useState<string | null>(null)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+  const isTelegram = typeof window !== 'undefined' && !!window.Telegram?.WebApp
 
   // Check for invite parameter in URL
   useEffect(() => {
@@ -27,11 +28,20 @@ export function PairingScreen() {
       return
     }
 
-    // 2) Fallback to query param (useful for local dev in browser)
+    // 2) Fallback to query params (useful for local dev or if user tapped link in browser)
     const params = new URLSearchParams(window.location.search)
+    const startAppParam = params.get('startapp')
     const inviteParam = params.get('invite')
-    if (inviteParam) {
-      setInviteCode(inviteParam)
+    const param = startAppParam || inviteParam
+
+    if (param) {
+      setInviteCode(param)
+
+      // If opened in external browser, try to bounce into Telegram app
+      if (!isTelegram && botUsername) {
+        const tgDeepLink = `tg://resolve?domain=${botUsername}&startapp=${param}`
+        window.location.href = tgDeepLink
+      }
       // Optionally auto-join if code is provided
       // handleJoin() // Uncomment if you want auto-join
     }
