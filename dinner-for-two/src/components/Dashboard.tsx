@@ -1199,10 +1199,10 @@ export function Dashboard() {
                                              }
                                            }
                                            
-                                           return (
-                                           <Draggable key={dish.id} draggableId={dish.id} index={index}>
+                                          return (
+                                          <Draggable draggableId={dish.id} index={index}>
                                                {(provided: any) => (
-                                                   <div
+                                                  <div
                                                        ref={provided.innerRef}
                                                        {...provided.draggableProps}
                                                        {...provided.dragHandleProps}
