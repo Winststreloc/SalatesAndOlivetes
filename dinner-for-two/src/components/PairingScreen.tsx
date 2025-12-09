@@ -55,6 +55,7 @@ export function PairingScreen() {
   const buildInviteLink = (code: string) => {
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
     // Use Telegram deep link to bot with start param so the bot receives the code
+    console.log('botUsername', botUsername)
     if (botUsername) return `https://t.me/${botUsername}?start=${code}`
     // Fallback: plain URL with invite query (for local dev)
     return `${appUrl}?invite=${code}`
