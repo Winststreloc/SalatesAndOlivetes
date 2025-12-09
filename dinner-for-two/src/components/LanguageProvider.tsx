@@ -136,7 +136,8 @@ const translations = {
     language: "Language",
     today: "Today",
     tomorrow: "Tomorrow",
-    yesterday: "Yesterday"
+    yesterday: "Yesterday",
+    edit: "Edit"
   },
   ru: {
     startNew: "Создать пару",
@@ -220,6 +221,7 @@ const translations = {
     today: "Сегодня",
     tomorrow: "Завтра",
     yesterday: "Вчера",
+    edit: "Редактировать",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",
