@@ -88,8 +88,6 @@ export function ShoppingListTab({
 
   // Categorized list with sorting
   const categorizedList = useMemo(() => {
-    if (sortBy !== 'category') return baseCategorizedList
-    
     const result: Record<IngredientCategory, CategorizedIngredient[]> = {
       vegetables: [],
       fruits: [],
@@ -107,7 +105,9 @@ export function ShoppingListTab({
       const unpurchased = items.filter(item => !item.is_purchased)
       const purchased = items.filter(item => item.is_purchased)
       
-      if (sortBy === 'alphabetical') {
+      // When sorting by category, sort items within each category alphabetically by default
+      // When sorting by alphabetical/amount, still group by category but sort within
+      if (sortBy === 'alphabetical' || sortBy === 'category') {
         unpurchased.sort((a, b) => a.name.localeCompare(b.name))
         purchased.sort((a, b) => a.name.localeCompare(b.name))
       } else if (sortBy === 'amount') {
