@@ -12,7 +12,7 @@ import { logger } from '@/utils/logger'
 // Initialize Google Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
 
-export async function addDish(dishName: string, dayOfWeek?: number) {
+export async function addDish(dishName: string, date?: string) {
   const user = await getUserFromSession()
   if (!user) {
     const error = new Error('Unauthorized: Please log in')
@@ -35,13 +35,16 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
 
   const supabase = await createServerSideClient()
 
+  // If date not provided, use today's date
+  const dishDate = date || new Date().toISOString().split('T')[0]
+
   const { data: dish, error } = await supabase
     .from('dishes')
     .insert({
       couple_id: user.couple_id,
       name: dishName,
       status: 'proposed',
-      day_of_week: dayOfWeek,
+      dish_date: dishDate,
       created_by: user.telegram_id
     })
     .select()
@@ -53,7 +56,7 @@ export async function addDish(dishName: string, dayOfWeek?: number) {
       type: 'DATABASE_ERROR',
       userId: String(user.telegram_id),
       coupleId: user.couple_id,
-      metadata: { dishName, dayOfWeek },
+      metadata: { dishName, date: dishDate },
       showToast: false,
     }))
     throw dbError
@@ -261,14 +264,31 @@ export async function getDishes() {
 
   const supabase = await createServerSideClient()
   
+  // Get today and 6 days ahead
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const todayStr = today.toISOString().split('T')[0]
+  
+  const endDate = new Date(today)
+  endDate.setDate(today.getDate() + 6)
+  const endDateStr = endDate.toISOString().split('T')[0]
+  
   const { data } = await supabase
     .from('dishes')
     .select('*, ingredients(*)')
     .eq('couple_id', user.couple_id)
-    .order('day_of_week', { ascending: true }) // Order by day
+    .or(`dish_date.gte.${todayStr},dish_date.is.null`) // Include dishes with date >= today or no date
+    .order('dish_date', { ascending: true, nullsFirst: false }) // Order by date
     .order('created_at', { ascending: false })
     
-  return data || []
+  // Filter to only show dishes with date >= today and <= today + 6 days, or dishes without date (for backward compatibility)
+  const filtered = (data || []).filter((dish: any) => {
+    if (!dish.dish_date) return true // Keep dishes without date for backward compatibility
+    const dishDate = new Date(dish.dish_date + 'T00:00:00')
+    return dishDate >= today && dishDate <= endDate
+  })
+  
+  return filtered
 }
 
 export async function getDish(dishId: string) {
@@ -346,7 +366,7 @@ export async function toggleDishSelection(dishId: string, isSelected: boolean) {
   revalidatePath('/')
 }
 
-export async function moveDish(dishId: string, dayOfWeek: number) {
+export async function moveDish(dishId: string, date: string) {
   const user = await getUserFromSession()
   if (!user) {
     const error = new Error('Unauthorized: Please log in')
@@ -370,7 +390,7 @@ export async function moveDish(dishId: string, dayOfWeek: number) {
   
   const { error } = await supabase
     .from('dishes')
-    .update({ day_of_week: dayOfWeek })
+    .update({ dish_date: date })
     .eq('id', dishId)
     .eq('couple_id', user.couple_id)
 
@@ -380,7 +400,7 @@ export async function moveDish(dishId: string, dayOfWeek: number) {
       type: 'DATABASE_ERROR',
       userId: String(user.telegram_id),
       coupleId: user.couple_id,
-      metadata: { dishId, dayOfWeek },
+      metadata: { dishId, date },
       showToast: false,
     }))
     throw dbError

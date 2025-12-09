@@ -9,7 +9,7 @@ import { useLang } from './LanguageProvider'
 import { showToast } from '@/utils/toast'
 import { logger } from '@/utils/logger'
 
-export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number, onAdded: (dish?: any) => void, onCancel: () => void, onRemove?: (dishId: string) => void }) {
+export function AddDishForm({ date, onAdded, onCancel, onRemove }: { date: string, onAdded: (dish?: any) => void, onCancel: () => void, onRemove?: (dishId: string) => void }) {
   const { t, lang } = useLang()
   const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,8 +20,8 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
     
     setLoading(true)
     try {
-      // 1. Fast add with day
-      const dish = await addDish(name, day)
+      // 1. Fast add with date
+      const dish = await addDish(name, date)
       setName('')
       
       // Pass dish to onAdded for optimistic update
@@ -102,7 +102,7 @@ export function AddDishForm({ day, onAdded, onCancel, onRemove }: { day: number,
         : t.failedAdd
       
       handleError(e, createErrorContext('addDish', {
-        metadata: { dishName: name, day },
+        metadata: { dishName: name, date },
         showToast: false, // We show custom toast
       }))
       

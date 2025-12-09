@@ -132,7 +132,10 @@ const translations = {
     settingsSaved: "Settings saved successfully",
     theme: "Theme",
     darkMode: "Dark",
-    lightMode: "Light"
+    lightMode: "Light",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    yesterday: "Yesterday"
   },
   ru: {
     startNew: "Создать пару",
@@ -212,6 +215,9 @@ const translations = {
     theme: "Тема",
     darkMode: "Темная",
     lightMode: "Светлая",
+    today: "Сегодня",
+    tomorrow: "Завтра",
+    yesterday: "Вчера",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",

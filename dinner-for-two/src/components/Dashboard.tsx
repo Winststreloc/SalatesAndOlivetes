@@ -28,6 +28,7 @@ import { DishSkeleton } from './LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { logger } from '@/utils/logger'
+import { getWeekDates, formatDate, getDateLabel, getDateButtonLabel } from '@/utils/dateUtils'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -37,7 +38,7 @@ export function Dashboard() {
   const [dishes, setDishes] = useState<any[]>([])
   const [showInvite, setShowInvite] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
-  const [addingDay, setAddingDay] = useState<number | null>(null)
+  const [addingDay, setAddingDay] = useState<string | null>(null)
   const [selectedDish, setSelectedDish] = useState<any | null>(null)
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
@@ -562,7 +563,7 @@ export function Dashboard() {
     return `https://t.me/${botUsername}/app?startapp=${code}`
   }
 
-  const handleConfirmAddIdea = async (day: number) => {
+  const handleConfirmAddIdea = async (date: string) => {
       if (!pendingIdea) return
       
       setShowDaySelector(false)
@@ -570,7 +571,7 @@ export function Dashboard() {
       setPendingIdea(null)
       
       try {
-          const dish = await addDish(name, day)
+          const dish = await addDish(name, date)
           
           // Optimistic update - add dish to local state immediately
           if (isMountedRef.current) {
@@ -649,7 +650,7 @@ export function Dashboard() {
           handleError(error, createErrorContext('handleConfirmAddIdea', {
             type: 'DATABASE_ERROR',
             userId: undefined,
-            metadata: { dishName: name, day },
+            metadata: { dishName: name, date },
           }))
           // Show specific error message if validation failed
           const errorMessage = error?.message?.includes('valid dish name') 
@@ -1018,45 +1019,42 @@ export function Dashboard() {
     }
   }
   
-  const dishesByDay = useMemo(() => {
-      const groups: Record<number, any[]> = {}
-      for(let i=0; i<7; i++) groups[i] = []
+  // Generate array of 7 dates starting from today
+  const orderedDates = useMemo(() => {
+      return getWeekDates()
+  }, [])
+
+  const dishesByDate = useMemo(() => {
+      const groups: Record<string, any[]> = {}
+      // Initialize groups for all dates in the week
+      orderedDates.forEach(date => {
+          groups[date] = []
+      })
       dishes.forEach(d => {
-          if (d.day_of_week !== null && d.day_of_week !== undefined) {
-              groups[d.day_of_week].push(d)
+          if (d.dish_date) {
+              const dateStr = d.dish_date.split('T')[0] // Handle both date and timestamp formats
+              if (groups[dateStr]) {
+                  groups[dateStr].push(d)
+              }
           }
       })
       return groups
-  }, [dishes])
-
-  // Dynamic Days Ordering
-  const orderedDays = useMemo(() => {
-      const todayIndex = new Date().getDay(); // 0=Sun
-      // Convert to our 0=Mon system:
-      // Sun(0) -> 6, Mon(1) -> 0, ...
-      const today = todayIndex === 0 ? 6 : todayIndex - 1;
-
-      const days = [];
-      for(let i=0; i<7; i++) {
-          days.push((today + i) % 7);
-      }
-      return days;
-  }, [])
+  }, [dishes, orderedDates])
 
   const onDragEnd = async (result: any) => {
     if (!result.destination) return;
-    const sourceDay = parseInt(result.source.droppableId);
-    const destDay = parseInt(result.destination.droppableId);
+    const sourceDate = result.source.droppableId;
+    const destDate = result.destination.droppableId;
     const dishId = result.draggableId;
-    if (sourceDay === destDay) return;
+    if (sourceDate === destDate) return;
 
     setDishes(prev => prev.map(d => {
         if (d.id === dishId) {
-            return { ...d, day_of_week: destDay }
+            return { ...d, dish_date: destDate }
         }
         return d
     }))
-    await moveDish(dishId, destDay);
+    await moveDish(dishId, destDate);
   };
 
   return (
@@ -1241,14 +1239,14 @@ export function Dashboard() {
                    </CardHeader>
                    <CardContent className="text-center pb-6">
                        <div className="grid grid-cols-2 gap-2 mb-4">
-                           {orderedDays.map(dayIndex => (
+                           {orderedDates.map(date => (
                                <Button
-                                   key={dayIndex}
+                                   key={date}
                                    variant="outline"
-                                   onClick={() => handleConfirmAddIdea(dayIndex)}
+                                   onClick={() => handleConfirmAddIdea(date)}
                                    className="h-12"
                                >
-                                   {t.days[dayIndex]}
+                                   {getDateButtonLabel(date, lang)}
                                </Button>
                            ))}
                        </div>
@@ -1301,8 +1299,8 @@ export function Dashboard() {
             ) : (
             <DragDropContext onDragEnd={onDragEnd}>
                 <div className="space-y-6">
-                   {orderedDays.map(dayIndex => (
-                       <Droppable key={dayIndex} droppableId={String(dayIndex)}>
+                   {orderedDates.map(date => (
+                       <Droppable key={date} droppableId={date}>
                            {(provided: any) => (
                                <div 
                                  ref={provided.innerRef}
@@ -1310,14 +1308,14 @@ export function Dashboard() {
                                  className="bg-card rounded-lg shadow-sm border border-border overflow-hidden"
                                        >
                                            <div className="bg-muted p-3 font-semibold text-foreground flex justify-between items-center">
-                                       <span>{t.days[dayIndex]}</span>
-                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setAddingDay(dayIndex)}>
+                                       <span>{formatDate(date, lang)}</span>
+                                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setAddingDay(date)}>
                                            <Plus className="h-4 w-4" />
                                        </Button>
                                    </div>
                                    
                                    <div className="p-2 space-y-2 min-h-[50px]">
-                                       {dishesByDay[dayIndex].map((dish, index) => {
+                                       {dishesByDate[date]?.map((dish, index) => {
                                            // Create swipe handlers without using hook (hooks can't be called in loops)
                                            const swipeHandlers = {
                                              onTouchStart: (e: React.TouchEvent) => {
@@ -1433,9 +1431,9 @@ export function Dashboard() {
                                        })}
                                        {provided.placeholder}
                                        
-                                       {addingDay === dayIndex ? (
+                                       {addingDay === date ? (
                                            <AddDishForm 
-                                              day={dayIndex} 
+                                              date={date} 
                                               onAdded={async (dish) => {
                                                   if (!isMountedRef.current) return
                                                   setAddingDay(null)
@@ -1489,8 +1487,8 @@ export function Dashboard() {
                                               onCancel={() => setAddingDay(null)} 
                                            />
                                        ) : (
-                                           dishesByDay[dayIndex].length === 0 && (
-                                               <div className="text-xs text-muted-foreground text-center py-2 cursor-pointer hover:text-foreground" onClick={() => setAddingDay(dayIndex)}>
+                                           (!dishesByDate[date] || dishesByDate[date].length === 0) && (
+                                               <div className="text-xs text-muted-foreground text-center py-2 cursor-pointer hover:text-foreground" onClick={() => setAddingDay(date)}>
                                                    + {t.add}
                                                </div>
                                            )
@@ -1961,11 +1959,10 @@ export function Dashboard() {
 
        {/* Floating Action Button */}
        <FloatingActionButton onClick={() => {
-         // Find first day without dishes or current day
-         const today = new Date().getDay()
-         const currentDayIndex = today === 0 ? 6 : today - 1
-         const firstEmptyDay = orderedDays.find(dayIndex => dishesByDay[dayIndex].length === 0) ?? currentDayIndex
-         setAddingDay(firstEmptyDay)
+         // Find first date without dishes or today's date
+         const today = new Date().toISOString().split('T')[0]
+         const firstEmptyDate = orderedDates.find(date => !dishesByDate[date] || dishesByDate[date].length === 0) ?? today
+         setAddingDay(firstEmptyDate)
          setTab('plan')
        }} />
     </div>
