@@ -53,19 +53,24 @@ export function PairingScreen() {
     }
   }
 
-  const buildInviteLink = (code: string) => {
+  // Link to send code to bot (start_param). Bot should respond with WebApp button.
+  const buildBotLink = (code: string) =>
+    `https://t.me/${botUsername}?start=${code}`
+
+  // Link to open the WebApp directly with startapp param (Telegram will open bot WebApp)
+  const buildAppLink = (code: string) =>
+    `https://t.me/${botUsername}/app?startapp=${code}`
+
+  // Fallback link for local/dev or if bot username missing
+  const buildFallbackLink = (code: string) => {
     const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    return `https://t.me/${botUsername}?start=${code}`
-    // Use Telegram deep link to bot with start param so the bot receives the code
-    // console.log('botUsername', botUsername)
-    // if (!botUsername) return `https://t.me/${botUsername}?start=${code}`
-    // // Fallback: plain URL with invite query (for local dev)
-    // return `${appUrl}?invite=${code}`
+    return `${appUrl}?invite=${code}`
   }
 
   const handleShare = () => {
     if (!createdCode) return
-    const inviteLink = buildInviteLink(createdCode)
+    // Share bot link so recipient starts bot and it can reply with WebApp button
+    const inviteLink = botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode)
     const url = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join me in S&O!')}`
     
     if (window.Telegram?.WebApp) {
@@ -77,7 +82,7 @@ export function PairingScreen() {
 
   const handleCopyLink = async () => {
     if (!createdCode) return
-    const inviteLink = buildInviteLink(createdCode)
+    const inviteLink = botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode)
     
     try {
         await navigator.clipboard.writeText(inviteLink)
@@ -128,16 +133,28 @@ export function PairingScreen() {
                <div className="mb-4">
                    <a 
                        href={typeof window !== 'undefined'
-                        ? buildInviteLink(createdCode)
+                        ? (botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode))
                         : '#'}
                        target="_blank"
                        rel="noopener noreferrer"
                        className="text-blue-500 hover:text-blue-700 underline text-sm break-all"
                    >
                        {typeof window !== 'undefined'
-                        ? buildInviteLink(createdCode)
+                        ? (botUsername ? buildBotLink(createdCode) : buildFallbackLink(createdCode))
                         : ''}
                    </a>
+                   {botUsername && (
+                     <div className="mt-2 text-xs">
+                       <a
+                         href={buildAppLink(createdCode)}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="text-blue-500 hover:text-blue-700 underline break-all"
+                       >
+                         Открыть WebApp: {buildAppLink(createdCode)}
+                       </a>
+                     </div>
+                   )}
                </div>
                
                <Button className="w-full mt-4 flex items-center gap-2" onClick={handleShare}>
