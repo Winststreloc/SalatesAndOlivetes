@@ -27,6 +27,7 @@ import { showToast } from '@/utils/toast'
 import { DishSkeleton } from './LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
+import { logger } from '@/utils/logger'
 
 export function Dashboard() {
   const { t, lang, setLang } = useLang()
@@ -287,21 +288,31 @@ export function Dashboard() {
                 // Note: We can't filter directly on ingredients, so we refresh dishes
             },
             (payload) => {
-                console.log('🔔 Realtime ingredients update:', payload.eventType, payload)
+                logger.info('Realtime ingredients update', {
+                  eventType: payload.eventType,
+                  dishId: (payload.new as any)?.dish_id || (payload.old as any)?.dish_id,
+                  payload: payload
+                })
                 // Ingredients changed - update only the affected dish
                 const dishId = (payload.new as any)?.dish_id || (payload.old as any)?.dish_id
                 if (dishId && isMountedRef.current) {
                   const currentMounted = isMountedRef.current
+                  logger.debug('Fetching updated dish with ingredients', { dishId })
                   getDish(dishId).then(dish => {
                     if (!currentMounted || !isMountedRef.current) return
                     if (dish) {
+                      logger.info('Dish updated with new ingredients', {
+                        dishId: dish.id,
+                        dishName: dish.name,
+                        ingredientsCount: dish.ingredients?.length || 0
+                      })
                       setDishes(prev => {
                         if (!isMountedRef.current) return prev
                         return prev.map(d => d.id === dish.id ? dish : d)
                       })
                     }
                   }).catch(err => {
-                    console.error('Failed to fetch dish with updated ingredients:', err)
+                    logger.error('Failed to fetch dish with updated ingredients', err, { dishId })
                   })
                 }
             }
