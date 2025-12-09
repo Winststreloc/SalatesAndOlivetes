@@ -22,7 +22,7 @@ interface PlanTabProps {
   addingDay: string | null
   selectedDish: Dish | null
   user: { id: number; first_name: string; username?: string } | null
-  hasPartner: boolean
+  hasPartner: boolean | null // null = loading, false/true = loaded
   couplePreferences: { useAI?: boolean }
   recentlyAddedDishesRef: React.MutableRefObject<Set<string>>
   deletingDishesRef: React.MutableRefObject<Set<string>>
@@ -186,7 +186,7 @@ export function PlanTab({
                           
                           if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
                             if (deltaX > 0) {
-                              if (dish.status === 'proposed' && ((dish.created_by !== user?.id && hasPartner) || (dish.created_by === user?.id && !hasPartner))) {
+                              if (dish.status === 'proposed' && hasPartner !== null && ((dish.created_by !== user?.id && hasPartner) || (dish.created_by === user?.id && !hasPartner))) {
                                 handleToggleDish(dish.id, dish.status)
                               }
                             } else {
@@ -229,7 +229,7 @@ export function PlanTab({
                                 ) : null}
                               </div>
                               <div className="absolute top-2 right-2 flex gap-2">
-                                {dish.status === 'proposed' && (
+                                {dish.status === 'proposed' && hasPartner !== null && (
                                   ((dish.created_by !== user?.id && hasPartner) || 
                                    (dish.created_by === user?.id && !hasPartner))
                                 ) && (
@@ -241,7 +241,7 @@ export function PlanTab({
                                     <CheckCircle2 className="h-5 w-5" />
                                   </button>
                                 )}
-                                {dish.status === 'selected' && (
+                                {dish.status === 'selected' && hasPartner !== null && (
                                   ((dish.created_by !== user?.id && hasPartner) || 
                                    (dish.created_by === user?.id && !hasPartner))
                                 ) && (

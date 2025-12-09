@@ -42,7 +42,7 @@ export function Dashboard() {
   const [manualIngredients, setManualIngredients] = useState<ManualIngredient[]>([])
   const [editingIngredient, setEditingIngredient] = useState<{ id: string, type: 'dish' | 'manual', name: string, amount: string, unit: string } | null>(null)
   const [showAddIngredient, setShowAddIngredient] = useState(false)
-  const [hasPartnerUser, setHasPartnerUser] = useState(false)
+  const [hasPartnerUser, setHasPartnerUser] = useState<boolean | null>(null) // null = loading, false/true = loaded
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean, title: string, description: string, onConfirm: () => void } | null>(null)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
