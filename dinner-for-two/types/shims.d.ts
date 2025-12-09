@@ -18,6 +18,12 @@ declare module 'react' {
     effect: (...args: any[]) => void | (() => void),
     deps?: any[]
   ): void
+  export function useMemo<T = any>(factory: () => T, deps?: any[]): T
+  export function useRef<T = any>(initialValue?: T): { current: T }
+  export function useCallback<T extends (...args: any[]) => any>(
+    cb: T,
+    deps?: any[]
+  ): T
   export function createContext<T = any>(defaultValue?: T): any
   export function useContext<T = any>(ctx: any): T
   export * from 'react/jsx-runtime'
