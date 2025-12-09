@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { RealtimePayload, Dish, Ingredient, ManualIngredient } from '@/types'
-import type { RealtimeChannel } from '@supabase/realtime-js'
 
 type Callback<T> = (payload: RealtimePayload<T>) => void
 
@@ -15,7 +14,7 @@ interface RealtimeHandlers {
 
 export function useRealtime(coupleId?: string | null, handlers: RealtimeHandlers = {}) {
   const [isConnected, setIsConnected] = useState(false)
-  const channelRef = useRef<RealtimeChannel | null>(null)
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
 
   useEffect(() => {
     if (!coupleId) return
