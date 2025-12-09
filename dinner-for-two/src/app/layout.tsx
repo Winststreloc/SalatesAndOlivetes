@@ -5,7 +5,6 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "sonner";
-import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,10 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <Script 
-          src="https://telegram.org/js/telegram-web-app.js" 
-          strategy="beforeInteractive" 
-        />
+        <script src="https://telegram.org/js/telegram-web-app.js" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
