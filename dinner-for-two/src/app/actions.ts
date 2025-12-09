@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
+import { logger } from '@/utils/logger'
 
 // Initialize Google Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || '')
@@ -206,7 +207,29 @@ Input: ${dishName}`
       unit: ing.unit,
     }))
     
-    await supabase.from('ingredients').insert(ingredientsToInsert)
+    logger.info('Inserting ingredients into database', {
+      dishId,
+      dishName,
+      count: ingredientsToInsert.length,
+      ingredients: ingredientsToInsert.map(ing => ({ name: ing.name, amount: ing.amount, unit: ing.unit }))
+    })
+    
+    const { data, error } = await supabase.from('ingredients').insert(ingredientsToInsert)
+    
+    if (error) {
+      logger.error('Failed to insert ingredients', error, {
+        dishId,
+        dishName,
+        count: ingredientsToInsert.length
+      })
+    } else {
+      logger.info('Successfully inserted ingredients', {
+        dishId,
+        dishName,
+        count: ingredientsToInsert.length,
+        insertedIds: data
+      })
+    }
   }
   
   revalidatePath('/')

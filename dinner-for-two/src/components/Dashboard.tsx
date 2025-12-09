@@ -288,10 +288,11 @@ export function Dashboard() {
                 // Note: We can't filter directly on ingredients, so we refresh dishes
             },
             (payload) => {
-                logger.info('Realtime ingredients update', {
+                logger.info('🔔 Realtime ingredients event received', {
                   eventType: payload.eventType,
                   dishId: (payload.new as any)?.dish_id || (payload.old as any)?.dish_id,
-                  payload: payload
+                  ingredientId: (payload.new as any)?.id || (payload.old as any)?.id,
+                  fullPayload: payload
                 })
                 // Ingredients changed - update only the affected dish
                 const dishId = (payload.new as any)?.dish_id || (payload.old as any)?.dish_id
@@ -365,23 +366,27 @@ export function Dashboard() {
             }
         )
         .subscribe((status) => {
-            console.log('📡 Realtime subscription status:', status)
+            logger.info('Realtime subscription status changed', {
+              status,
+              channel: `dashboard-changes-${coupleId}`,
+              isSubscribed: status === 'SUBSCRIBED'
+            })
             if (isMountedRef.current) {
               setIsRealtimeConnected(status === 'SUBSCRIBED')
             }
             
             if (status === 'CHANNEL_ERROR') {
-              console.error('❌ Realtime channel error')
+              logger.error('Realtime channel error', undefined, { channel: `dashboard-changes-${coupleId}` })
               if (isMountedRef.current) {
                 setIsRealtimeConnected(false)
               }
             } else if (status === 'TIMED_OUT') {
-              console.warn('⏱️ Realtime connection timed out')
+              logger.warn('Realtime connection timed out', { channel: `dashboard-changes-${coupleId}` })
               if (isMountedRef.current) {
                 setIsRealtimeConnected(false)
               }
             } else if (status === 'CLOSED') {
-              console.warn('🔒 Realtime channel closed')
+              logger.warn('Realtime channel closed', { channel: `dashboard-changes-${coupleId}` })
               if (isMountedRef.current) {
                 setIsRealtimeConnected(false)
               }
