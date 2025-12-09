@@ -86,24 +86,49 @@ export function handleError(
     errorType = context.type
   }
 
-  // Log to Sentry with context
-  Sentry.captureException(error, {
-    tags: {
-      errorType,
-      action: context?.action || 'unknown',
-    },
-    contexts: {
-      error: {
-        type: errorType,
-        action: context?.action,
+  const isDev = process.env.NODE_ENV === 'development'
+  
+  // Detailed console logging in development
+  if (isDev) {
+    const logLevel = context?.severity === 'warning' ? 'warn' : 
+                     context?.severity === 'info' ? 'info' : 'error'
+    const logMethod = console[logLevel] || console.error
+    
+    logMethod(`[${errorType}] ${context?.action || 'Unknown action'}:`, {
+      message: errorMessage,
+      error: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      } : error,
+      context: {
         userId: context?.userId,
         coupleId: context?.coupleId,
         ...context?.metadata,
       },
-    },
-    level: context?.severity === 'warning' ? 'warning' : 
-          context?.severity === 'info' ? 'info' : 'error',
-  })
+    })
+  }
+
+  // Log to Sentry with context (only in production)
+  if (!isDev) {
+    Sentry.captureException(error, {
+      tags: {
+        errorType,
+        action: context?.action || 'unknown',
+      },
+      contexts: {
+        error: {
+          type: errorType,
+          action: context?.action,
+          userId: context?.userId,
+          coupleId: context?.coupleId,
+          ...context?.metadata,
+        },
+      },
+      level: context?.severity === 'warning' ? 'warning' : 
+            context?.severity === 'info' ? 'info' : 'error',
+    })
+  }
 
   // Show toast to user if requested (default: true for errors, false for warnings/info)
   if (context?.showToast !== false && context?.severity !== 'info') {
