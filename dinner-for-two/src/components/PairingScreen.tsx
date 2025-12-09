@@ -111,7 +111,7 @@ export function PairingScreen() {
                  <Input 
                    placeholder={t.enterCode}
                    value={inviteCode} 
-                   onChange={(e) => setInviteCode(e.target.value)} 
+                  onChange={(e: any) => setInviteCode(e.target.value)} 
                  />
                  <Button variant="outline" onClick={handleJoin}>{t.join}</Button>
                </div>
