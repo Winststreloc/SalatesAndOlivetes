@@ -78,13 +78,6 @@ export interface RealtimePayload<T> {
   old: T
 }
 
-// Supabase Realtime channel type
-export type RealtimeChannel = {
-  on: (event: string, filter: Record<string, unknown>, callback: (payload: RealtimePayload<unknown>) => void) => RealtimeChannel
-  subscribe: (callback: (status: string) => void) => void
-  unsubscribe: () => void
-}
-
 // Drag and Drop types - re-export from @hello-pangea/dnd for convenience
 export type { DropResult as DragResult, DroppableProvided, DraggableProvided } from '@hello-pangea/dnd'
 

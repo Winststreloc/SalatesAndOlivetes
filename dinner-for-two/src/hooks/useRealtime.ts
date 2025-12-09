@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { RealtimePayload, RealtimeChannel, Dish, Ingredient, ManualIngredient } from '@/types'
+import { RealtimePayload, Dish, Ingredient, ManualIngredient } from '@/types'
+import type { RealtimeChannel } from '@supabase/realtime-js'
 
 type Callback<T> = (payload: RealtimePayload<T>) => void
 
