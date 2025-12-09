@@ -186,7 +186,7 @@ export function PlanTab({
                           
                           if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
                             if (deltaX > 0) {
-                              if (dish.status === 'proposed' && ((dish.created_by !== user?.telegram_id && hasPartner) || (dish.created_by === user?.telegram_id && !hasPartner))) {
+                              if (dish.status === 'proposed' && ((dish.created_by !== user?.id && hasPartner) || (dish.created_by === user?.id && !hasPartner))) {
                                 handleToggleDish(dish.id, dish.status)
                               }
                             } else {
@@ -230,8 +230,8 @@ export function PlanTab({
                               </div>
                               <div className="absolute top-2 right-2 flex gap-2">
                                 {dish.status === 'proposed' && (
-                                  ((dish.created_by !== user?.telegram_id && hasPartner) || 
-                                   (dish.created_by === user?.telegram_id && !hasPartner))
+                                  ((dish.created_by !== user?.id && hasPartner) || 
+                                   (dish.created_by === user?.id && !hasPartner))
                                 ) && (
                                   <button 
                                     className="text-muted-foreground hover:text-green-500"
@@ -242,8 +242,8 @@ export function PlanTab({
                                   </button>
                                 )}
                                 {dish.status === 'selected' && (
-                                  ((dish.created_by !== user?.telegram_id && hasPartner) || 
-                                   (dish.created_by === user?.telegram_id && !hasPartner))
+                                  ((dish.created_by !== user?.id && hasPartner) || 
+                                   (dish.created_by === user?.id && !hasPartner))
                                 ) && (
                                   <button 
                                     className="text-green-500 hover:text-orange-500"
