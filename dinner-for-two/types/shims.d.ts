@@ -24,6 +24,7 @@ declare module 'react' {
     cb: T,
     deps?: any[]
   ): T
+  export type ReactNode = any
   export function createContext<T = any>(defaultValue?: T): any
   export function useContext<T = any>(ctx: any): T
   export * from 'react/jsx-runtime'

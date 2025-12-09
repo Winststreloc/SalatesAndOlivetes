@@ -56,7 +56,7 @@ export function GlobalSearch({ dishes, ingredients, onSelectDish, onSelectIngred
             <Input
               placeholder={t.search || 'Search...'}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e : any) => setQuery(e.target.value)}
               className="pl-10"
               autoFocus
             />

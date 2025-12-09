@@ -25,7 +25,6 @@ import { createClient } from '@/lib/supabase'
 import { showToast } from '@/utils/toast'
 import { DishSkeleton } from './LoadingStates'
 import { Skeleton } from '@/components/ui/skeleton'
-import { triggerHaptic } from '@/utils/haptics'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 
 export function Dashboard() {
