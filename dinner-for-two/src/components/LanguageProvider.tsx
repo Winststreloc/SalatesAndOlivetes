@@ -129,7 +129,10 @@ const translations = {
     coupleSettings: "Couple Settings",
     useAIForIngredients: "Use AI to generate ingredients",
     useAIForIngredientsDesc: "Automatically generate ingredients and recipes for dishes using AI",
-    settingsSaved: "Settings saved successfully"
+    settingsSaved: "Settings saved successfully",
+    theme: "Theme",
+    darkMode: "Dark",
+    lightMode: "Light"
   },
   ru: {
     startNew: "Создать пару",
@@ -206,6 +209,9 @@ const translations = {
     useAIForIngredients: "Использовать AI для генерации ингредиентов",
     useAIForIngredientsDesc: "Автоматически генерировать ингредиенты и рецепты для блюд с помощью AI",
     settingsSaved: "Настройки успешно сохранены",
+    theme: "Тема",
+    darkMode: "Темная",
+    lightMode: "Светлая",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",

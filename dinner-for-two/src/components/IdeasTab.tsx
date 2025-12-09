@@ -61,6 +61,9 @@ export function IdeasTab({ onSelectIdea }: { onSelectIdea: (name: string) => voi
   }
 
   const handleGenerate = async () => {
+      if (!useAI) {
+          return // Don't generate if AI is disabled
+      }
       setLoading(true)
       // Pass language here
       const newIdeas = await generateIdeas(lang)
