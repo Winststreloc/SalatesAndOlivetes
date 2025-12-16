@@ -32,6 +32,9 @@ export interface Dish {
   created_by?: string | number
   recipe?: string | null
   calories?: number | null
+  proteins?: number | null
+  fats?: number | null
+  carbs?: number | null
   ingredients?: Ingredient[]
 }
 

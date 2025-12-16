@@ -222,9 +222,16 @@ export function PlanTab({
                               <div className="font-medium pr-6 flex items-center cursor-pointer hover:text-blue-600 transition-colors gap-2 flex-wrap" onClick={() => onSetSelectedDish(dish)}>
                                 <BookOpen className="w-4 h-4 text-muted-foreground" />
                                 <span>{dish.name}</span>
-                                {dish.calories ? (
+                                {dish.calories || dish.proteins || dish.fats || dish.carbs ? (
                                   <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                                    {dish.calories} kcal
+                                    {dish.calories ? `${dish.calories} kcal` : ''}
+                                    {dish.proteins || dish.fats || dish.carbs ? (
+                                      <span className="ml-1">
+                                        {dish.proteins ? `Б:${dish.proteins}` : ''}
+                                        {dish.fats ? ` Ж:${dish.fats}` : ''}
+                                        {dish.carbs ? ` У:${dish.carbs}` : ''}
+                                      </span>
+                                    ) : null}
                                   </span>
                                 ) : null}
                               </div>

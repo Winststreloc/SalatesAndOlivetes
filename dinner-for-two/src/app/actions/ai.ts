@@ -48,7 +48,7 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   const dishNameLower = dishName.toLowerCase().trim()
   const { data: cached } = await supabase
     .from('dish_cache')
-    .select('ingredients, recipe, calories')
+    .select('ingredients, recipe, calories, proteins, fats, carbs')
     .eq('dish_name_lower', dishNameLower)
     .eq('lang', lang)
     .single()
@@ -62,11 +62,17 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   let ingredients: AIIngredient[] = []
   let recipe: string = ''
   let calories: number | null = null
+  let proteins: number | null = null
+  let fats: number | null = null
+  let carbs: number | null = null
   
   if (cached) {
     ingredients = cached.ingredients || []
     recipe = cached.recipe || ''
     calories = cached.calories ?? null
+    proteins = cached.proteins ?? null
+    fats = cached.fats ?? null
+    carbs = cached.carbs ?? null
     
       await supabase
       .from('dish_cache')
@@ -77,7 +83,7 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-robotics-er-1.5-preview' })
       
-      const prompt = `You are a chef assistant. Your task is to validate if the input is a food-related dish name and generate ingredients/recipe plus an estimated calorie count.
+      const prompt = `You are a chef assistant. Your task is to validate if the input is a food-related dish name and generate ingredients/recipe plus nutritional information (КБЖУ - calories, proteins, fats, carbs).
 
 IMPORTANT VALIDATION RULES:
 1. If the input is NOT related to food/cooking (e.g., programming questions, general questions, commands, spam, non-food items), return: {"error": "INVALID_INPUT", "message": "${lang === 'ru' ? 'Это не название блюда, связанное с едой. Пожалуйста, введите валидное название блюда.' : 'This is not a food-related dish name. Please enter a valid dish name.'}"}
@@ -87,6 +93,9 @@ If valid, generate a JSON object with:
 - 'ingredients': array of ingredients, each with 'name' (string), 'amount' (number or string), 'unit' (string, e.g. kg, g, pcs, ml)
 - 'recipe': string with cooking instructions (markdown allowed)
 - 'calories': integer number with estimated total kcal for the whole dish (not per 100g)
+- 'proteins': integer number with estimated total proteins in grams for the whole dish
+- 'fats': integer number with estimated total fats in grams for the whole dish
+- 'carbs': integer number with estimated total carbohydrates in grams for the whole dish
 
 Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
 Return ONLY valid JSON, no other text.
@@ -127,6 +136,15 @@ Input: ${dishName}`
       if (parsed.calories !== undefined && parsed.calories !== null && !Number.isNaN(Number(parsed.calories))) {
           calories = Number(parsed.calories)
       }
+      if (parsed.proteins !== undefined && parsed.proteins !== null && !Number.isNaN(Number(parsed.proteins))) {
+          proteins = Number(parsed.proteins)
+      }
+      if (parsed.fats !== undefined && parsed.fats !== null && !Number.isNaN(Number(parsed.fats))) {
+          fats = Number(parsed.fats)
+      }
+      if (parsed.carbs !== undefined && parsed.carbs !== null && !Number.isNaN(Number(parsed.carbs))) {
+          carbs = Number(parsed.carbs)
+      }
       
       if (ingredients.length > 0 || recipe) {
         await supabase
@@ -137,6 +155,9 @@ Input: ${dishName}`
             ingredients: ingredients,
             recipe: recipe,
             calories: calories,
+            proteins: proteins,
+            fats: fats,
+            carbs: carbs,
             lang: lang,
             usage_count: 1
           }, {
@@ -162,6 +183,9 @@ Input: ${dishName}`
   const dishUpdate: Record<string, string | number> = {}
   if (recipe) dishUpdate.recipe = recipe
   if (calories !== null && calories !== undefined) dishUpdate.calories = calories
+  if (proteins !== null && proteins !== undefined) dishUpdate.proteins = proteins
+  if (fats !== null && fats !== undefined) dishUpdate.fats = fats
+  if (carbs !== null && carbs !== undefined) dishUpdate.carbs = carbs
   if (Object.keys(dishUpdate).length > 0) {
       await supabase.from('dishes').update(dishUpdate).eq('id', dishId)
   }

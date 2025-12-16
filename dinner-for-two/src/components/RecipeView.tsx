@@ -72,11 +72,33 @@ export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }:
         </DialogHeader>
         
         <div className="space-y-4">
-            {dish.calories !== undefined && dish.calories !== null && (
-                <div className="text-sm text-muted-foreground">
-                    {t.calories || 'Calories'}: <span className="font-semibold text-foreground">{dish.calories}</span> kcal
+            {(dish.calories !== undefined && dish.calories !== null) || 
+             (dish.proteins !== undefined && dish.proteins !== null) || 
+             (dish.fats !== undefined && dish.fats !== null) || 
+             (dish.carbs !== undefined && dish.carbs !== null) ? (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                    {dish.calories !== undefined && dish.calories !== null && (
+                        <div className="text-muted-foreground">
+                            {t.calories || 'Calories'}: <span className="font-semibold text-foreground">{dish.calories}</span> kcal
+                        </div>
+                    )}
+                    {dish.proteins !== undefined && dish.proteins !== null && (
+                        <div className="text-muted-foreground">
+                            {t.proteins || 'Proteins'}: <span className="font-semibold text-foreground">{dish.proteins}</span> g
+                        </div>
+                    )}
+                    {dish.fats !== undefined && dish.fats !== null && (
+                        <div className="text-muted-foreground">
+                            {t.fats || 'Fats'}: <span className="font-semibold text-foreground">{dish.fats}</span> g
+                        </div>
+                    )}
+                    {dish.carbs !== undefined && dish.carbs !== null && (
+                        <div className="text-muted-foreground">
+                            {t.carbs || 'Carbs'}: <span className="font-semibold text-foreground">{dish.carbs}</span> g
+                        </div>
+                    )}
                 </div>
-            )}
+            ) : null}
             <div>
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-foreground">Ingredients</h3>

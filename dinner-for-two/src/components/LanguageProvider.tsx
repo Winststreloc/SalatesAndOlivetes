@@ -141,7 +141,10 @@ const translations = {
     recipePlaceholder: "Describe how to cook this dish...",
     cancel: "Cancel",
     noIngredients: "No ingredients yet",
-    calories: "Calories"
+    calories: "Calories",
+    proteins: "Proteins",
+    fats: "Fats",
+    carbs: "Carbs"
   },
   ru: {
     startNew: "Создать пару",
@@ -230,6 +233,9 @@ const translations = {
     cancel: "Отмена",
     noIngredients: "Ингредиентов пока нет",
     calories: "Калории",
+    proteins: "Белки",
+    fats: "Жиры",
+    carbs: "Углеводы",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",
