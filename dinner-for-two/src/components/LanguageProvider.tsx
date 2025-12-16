@@ -142,9 +142,9 @@ const translations = {
     cancel: "Cancel",
     noIngredients: "No ingredients yet",
     calories: "Calories",
-    proteins: "Proteins",
-    fats: "Fats",
-    carbs: "Carbs"
+    proteinsNutrition: "Proteins",
+    fatsNutrition: "Fats",
+    carbsNutrition: "Carbs"
   },
   ru: {
     startNew: "Создать пару",
@@ -233,9 +233,9 @@ const translations = {
     cancel: "Отмена",
     noIngredients: "Ингредиентов пока нет",
     calories: "Калории",
-    proteins: "Белки",
-    fats: "Жиры",
-    carbs: "Углеводы",
+    proteinsNutrition: "Белки",
+    fatsNutrition: "Жиры",
+    carbsNutrition: "Углеводы",
     generating: "Ищем ингредиенты...",
     days: ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"],
     addForDay: "Добавить на",

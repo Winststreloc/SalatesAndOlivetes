@@ -84,17 +84,17 @@ export function RecipeView({ dish, isOpen, onClose, onSave, onIngredientAdded }:
                     )}
                     {dish.proteins !== undefined && dish.proteins !== null && (
                         <div className="text-muted-foreground">
-                            {t.proteins || 'Proteins'}: <span className="font-semibold text-foreground">{dish.proteins}</span> g
+                            {t.proteinsNutrition || 'Proteins'}: <span className="font-semibold text-foreground">{dish.proteins}</span> g
                         </div>
                     )}
                     {dish.fats !== undefined && dish.fats !== null && (
                         <div className="text-muted-foreground">
-                            {t.fats || 'Fats'}: <span className="font-semibold text-foreground">{dish.fats}</span> g
+                            {t.fatsNutrition || 'Fats'}: <span className="font-semibold text-foreground">{dish.fats}</span> g
                         </div>
                     )}
                     {dish.carbs !== undefined && dish.carbs !== null && (
                         <div className="text-muted-foreground">
-                            {t.carbs || 'Carbs'}: <span className="font-semibold text-foreground">{dish.carbs}</span> g
+                            {t.carbsNutrition || 'Carbs'}: <span className="font-semibold text-foreground">{dish.carbs}</span> g
                         </div>
                     )}
                 </div>
