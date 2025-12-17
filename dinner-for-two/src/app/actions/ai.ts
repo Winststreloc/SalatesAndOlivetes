@@ -48,7 +48,16 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   const dishNameLower = dishName.toLowerCase().trim()
   const { data: cached } = await supabase
     .from('dish_cache')
-    .select('ingredients, recipe, calories, proteins, fats, carbs')
+    .select(`
+      id,
+      recipe,
+      calories,
+      proteins,
+      fats,
+      carbs,
+      usage_count,
+      dish_cache_ingredients (name, amount, unit)
+    `)
     .eq('dish_name_lower', dishNameLower)
     .eq('lang', lang)
     .single()
@@ -66,8 +75,15 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
   let fats: number | null = null
   let carbs: number | null = null
   
+  let cacheId: string | undefined
+
   if (cached) {
-    ingredients = cached.ingredients || []
+    cacheId = cached.id
+    ingredients = (cached as any).dish_cache_ingredients?.map((ing: any) => ({
+      name: ing.name,
+      amount: ing.amount,
+      unit: ing.unit
+    })) || []
     recipe = cached.recipe || ''
     calories = cached.calories ?? null
     proteins = cached.proteins ?? null
@@ -77,8 +93,7 @@ export async function generateDishIngredients(dishId: string, dishName: string, 
       await supabase
       .from('dish_cache')
       .update({ usage_count: ((cached as { usage_count?: number })?.usage_count || 0) + 1 })
-      .eq('dish_name_lower', dishNameLower)
-      .eq('lang', lang)
+      .eq('id', cached.id)
   } else {
     try {
       const model = genAI.getGenerativeModel({ model: 'gemini-robotics-er-1.5-preview' })
@@ -147,12 +162,11 @@ Input: ${dishName}`
       }
       
       if (ingredients.length > 0 || recipe) {
-        await supabase
+        const { data: cacheRow, error: cacheError } = await supabase
           .from('dish_cache')
           .upsert({
             dish_name: dishName,
             dish_name_lower: dishNameLower,
-            ingredients: ingredients,
             recipe: recipe,
             calories: calories,
             proteins: proteins,
@@ -163,6 +177,23 @@ Input: ${dishName}`
           }, {
             onConflict: 'dish_name_lower,lang'
           })
+          .select('id')
+          .single()
+
+        if (cacheError) throw cacheError
+        cacheId = cacheRow?.id || cacheId
+
+        if (cacheId && ingredients.length > 0) {
+          await supabase.from('dish_cache_ingredients').delete().eq('cache_id', cacheId)
+          await supabase.from('dish_cache_ingredients').insert(
+            ingredients.map((ing: AIIngredient) => ({
+              cache_id: cacheId,
+              name: ing.name,
+              amount: String(ing.amount),
+              unit: ing.unit
+            }))
+          )
+        }
       }
     } catch (e: unknown) {
       const error = e instanceof Error ? e : new Error('Unknown error')

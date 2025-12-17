@@ -38,6 +38,42 @@ export interface Dish {
   ingredients?: Ingredient[]
 }
 
+export interface WeeklyPlanIngredient {
+  id: string
+  plan_dish_id: string
+  ingredient_id?: string | null
+  name: string
+  amount?: string | number | null
+  unit?: string | null
+  is_purchased?: boolean
+}
+
+export interface WeeklyPlanDish {
+  id: string
+  plan_id: string
+  dish_id?: string | null
+  name: string
+  status: DishStatus
+  dish_date?: string | null
+  recipe?: string | null
+  calories?: number | null
+  proteins?: number | null
+  fats?: number | null
+  carbs?: number | null
+  created_by?: string | number | null
+  position?: number | null
+  ingredients?: WeeklyPlanIngredient[]
+}
+
+export interface WeeklyPlan {
+  id: string
+  couple_id: string
+  week_start_date: string
+  created_at?: string
+  dish_count?: number
+  dishes?: WeeklyPlanDish[] | Dish[]
+}
+
 export interface CouplePreferences {
   useAI?: boolean
   theme?: 'light' | 'dark'

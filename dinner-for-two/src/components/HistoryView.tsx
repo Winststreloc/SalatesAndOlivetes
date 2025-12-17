@@ -9,13 +9,14 @@ import { Calendar, Save, Loader2, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { showToast } from '@/utils/toast'
 import { ConfirmDialog } from './ConfirmDialog'
+import { Dish, WeeklyPlan } from '@/types'
 
-export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[], onLoadWeek: (dishes: any[]) => void }) {
+export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: Dish[], onLoadWeek: (dishes: Dish[]) => void }) {
   const { t } = useLang()
-  const [plans, setPlans] = useState<any[]>([])
+  const [plans, setPlans] = useState<WeeklyPlan[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [selectedPlan, setSelectedPlan] = useState<any | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<WeeklyPlan | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [planToDelete, setPlanToDelete] = useState<string | null>(null)
@@ -139,7 +140,7 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: any[
                     {t.weekOf} {formatDate(plan.week_start_date)}
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    {Array.isArray(plan.dishes) ? plan.dishes.length : 0} {plan.dishes?.length === 1 ? 'dish' : 'dishes'}
+                    {(plan.dish_count ?? plan.dishes?.length ?? 0)} {(plan.dish_count ?? plan.dishes?.length ?? 0) === 1 ? 'dish' : 'dishes'}
                   </div>
                 </div>
                 <div className="flex gap-2">
