@@ -71,7 +71,7 @@ export interface WeeklyPlan {
   week_start_date: string
   created_at?: string
   dish_count?: number
-  dishes?: WeeklyPlanDish[] | Dish[]
+  dishes?: Dish[]
 }
 
 export interface CouplePreferences {

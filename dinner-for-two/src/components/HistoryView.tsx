@@ -74,7 +74,7 @@ export function HistoryView({ currentDishes, onLoadWeek }: { currentDishes: Dish
     
     try {
       const planData = await loadWeeklyPlan(selectedPlan.id)
-      onLoadWeek(planData.dishes || [])
+      onLoadWeek((planData.dishes as Dish[] | undefined) || [])
       setShowConfirm(false)
       setSelectedPlan(null)
       showToast.success('Week loaded successfully!')
