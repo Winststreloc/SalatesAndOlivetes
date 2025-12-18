@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useLang } from '@/components/LanguageProvider'
-import { getHolidayGroups, createHolidayGroup, joinHolidayGroup, getHolidayGroupInviteCode } from '@/app/actions'
+import { createHolidayGroup, joinHolidayGroup, getHolidayGroupInviteCode } from '@/app/actions'
 import { HolidayGroup } from '@/types'
 import { showToast } from '@/utils/toast'
 import { Plus, Users, Calendar, ArrowLeft } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { HolidayInviteModal } from './HolidayInviteModal'
+import { useHolidayGroups } from '@/hooks/useHolidayGroups'
 
 interface HolidayGroupsListProps {
   onSelectGroup: (group: HolidayGroup) => void
@@ -20,8 +21,7 @@ interface HolidayGroupsListProps {
 
 export function HolidayGroupsList({ onSelectGroup, onCreateGroup, onBack }: HolidayGroupsListProps) {
   const { t, lang } = useLang()
-  const [groups, setGroups] = useState<HolidayGroup[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { groups, isLoading, mutate } = useHolidayGroups()
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [showJoinForm, setShowJoinForm] = useState(false)
   const [groupName, setGroupName] = useState('')
@@ -33,31 +33,12 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup, onBack }: Holi
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
 
-  const loadGroups = useCallback(async () => {
-    if (!isMountedRef.current) return
-    setIsLoading(true)
-    try {
-      const data = await getHolidayGroups()
-      if (isMountedRef.current) {
-        setGroups(data as HolidayGroup[])
-      }
-    } catch (error) {
-      console.error('Failed to load holiday groups:', error)
-      showToast.error(error instanceof Error ? error.message : 'Failed to load groups')
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false)
-      }
-    }
-  }, [])
-
   useEffect(() => {
     isMountedRef.current = true
-    loadGroups()
     return () => {
       isMountedRef.current = false
     }
-  }, [loadGroups])
+  }, [])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,7 +46,7 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup, onBack }: Holi
     try {
       const group = await createHolidayGroup(groupName.trim(), holidayType.trim() || undefined)
       if (isMountedRef.current) {
-        setGroups(prev => [group as HolidayGroup, ...prev])
+        mutate()
         setShowCreateForm(false)
         setGroupName('')
         setHolidayType('')
@@ -87,7 +68,7 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup, onBack }: Holi
     try {
       const group = await joinHolidayGroup(inviteCode.trim())
       if (isMountedRef.current) {
-        await loadGroups()
+        await mutate()
         setShowJoinForm(false)
         setInviteCode('')
         showToast.success(lang === 'ru' ? 'Вы присоединились к группе' : 'Joined group')

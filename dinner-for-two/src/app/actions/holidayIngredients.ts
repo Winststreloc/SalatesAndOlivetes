@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
@@ -76,6 +76,7 @@ export async function addHolidayDishIngredient(holidayDishId: string, name: stri
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`, 'page')
   revalidatePath('/')
 }
 
@@ -165,6 +166,7 @@ export async function updateHolidayDishIngredient(ingredientId: string, name: st
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${groupId}`, 'page')
   revalidatePath('/')
 }
 
@@ -244,6 +246,7 @@ export async function deleteHolidayDishIngredient(ingredientId: string) {
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${groupId}`, 'page')
   revalidatePath('/')
 }
 
@@ -326,6 +329,7 @@ export async function toggleHolidayIngredientPurchased(ingredientId: string, isP
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${holidayGroupId}`, 'page')
   revalidatePath('/')
 }
 
@@ -398,6 +402,12 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
     throw dbError
   }
 
+  const tags = ingredients
+    ?.map(ing => ing.holiday_dishes?.[0]?.holiday_group_id)
+    .filter((id): id is string => Boolean(id))
+    .map(id => `holiday-group-${id}`) || []
+
+  tags.forEach(tag => revalidateTag(tag, 'page'))
   revalidatePath('/')
 }
 

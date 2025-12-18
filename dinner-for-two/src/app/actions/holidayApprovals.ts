@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
@@ -88,6 +88,7 @@ export async function approveHolidayDish(dishId: string) {
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`, 'page')
   revalidatePath('/')
   return { success: true, alreadyApproved: false }
 }
@@ -123,6 +124,16 @@ export async function removeHolidayDishApproval(dishId: string) {
     throw dbError
   }
 
+  // Получить группу блюда, чтобы инвалидировать кэш
+  const { data: dish } = await supabase
+    .from('holiday_dishes')
+    .select('holiday_group_id')
+    .eq('id', dishId)
+    .single()
+
+  if (dish?.holiday_group_id) {
+    revalidateTag(`holiday-group-${dish.holiday_group_id}`, 'page')
+  }
   revalidatePath('/')
 }
 

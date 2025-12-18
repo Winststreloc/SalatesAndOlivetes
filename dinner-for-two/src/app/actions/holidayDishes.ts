@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache'
 import { createServerSideClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
@@ -66,6 +66,7 @@ export async function addHolidayDish(
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${holidayGroupId}`, 'page')
   revalidatePath('/')
   return dish
 }
@@ -74,25 +75,33 @@ export async function getHolidayDishes(holidayGroupId: string) {
   const user = await getUserFromSession()
   if (!user) return []
 
-  const supabase = await createServerSideClient()
+  const tag = `holiday-group-${holidayGroupId}`
+  const getDishesCached = unstable_cache(
+    async (groupId: string, telegramId: number) => {
+      const supabase = await createServerSideClient()
 
-  // Проверить, является ли пользователь участником группы
-  const { data: member } = await supabase
-    .from('holiday_members')
-    .select('id')
-    .eq('holiday_group_id', holidayGroupId)
-    .eq('telegram_id', user.telegram_id)
-    .single()
+      const { data: member } = await supabase
+        .from('holiday_members')
+        .select('id')
+        .eq('holiday_group_id', groupId)
+        .eq('telegram_id', telegramId)
+        .single()
 
-  if (!member) return []
+      if (!member) return []
 
-  const { data: dishes } = await supabase
-    .from('holiday_dishes')
-    .select('*, holiday_dish_ingredients(*)')
-    .eq('holiday_group_id', holidayGroupId)
-    .order('created_at', { ascending: false })
+      const { data: dishes } = await supabase
+        .from('holiday_dishes')
+        .select('*, holiday_dish_ingredients(*)')
+        .eq('holiday_group_id', groupId)
+        .order('created_at', { ascending: false })
 
-  return dishes || []
+      return dishes || []
+    },
+    ['holiday-group-dishes', holidayGroupId],
+    { tags: [tag], revalidate: 60 }
+  )
+
+  return getDishesCached(holidayGroupId, user.telegram_id)
 }
 
 export async function getHolidayDish(dishId: string) {
@@ -189,6 +198,7 @@ export async function deleteHolidayDish(dishId: string) {
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`, 'page')
   revalidatePath('/')
 }
 
@@ -261,6 +271,7 @@ export async function updateHolidayDishRecipe(dishId: string, recipe: string) {
     throw dbError
   }
 
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`, 'page')
   revalidatePath('/')
   return data
 }

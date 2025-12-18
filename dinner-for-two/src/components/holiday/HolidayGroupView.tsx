@@ -6,15 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useLang } from '@/components/LanguageProvider'
 import { 
-  getHolidayDishes, 
   addHolidayDish, 
   deleteHolidayDish,
   approveHolidayDish,
   removeHolidayDishApproval,
   getHolidayDishApprovals,
   isHolidayDishApprovedByAll,
-  getHolidayGroupMembers,
-  getHolidayGroupInviteCode,
   generateHolidayDishIngredients,
   addHolidayDishIngredient
 } from '@/app/actions'
@@ -31,6 +28,9 @@ import { HolidayApprovedDishesTab } from './HolidayApprovedDishesTab'
 import { HolidayShoppingListTab } from './HolidayShoppingListTab'
 import { HolidayIngredientEditor } from './HolidayIngredientEditor'
 import { HolidayDishModal } from './HolidayDishModal'
+import { useHolidayDishes } from '@/hooks/useHolidayDishes'
+import { useHolidayGroupMembers } from '@/hooks/useHolidayGroupMembers'
+import { useHolidayInviteCode } from '@/hooks/useHolidayInviteCode'
 
 const CATEGORY_LABELS: Record<HolidayDishCategory, { en: string; ru: string }> = {
   cold_appetizers: { en: 'Cold Appetizers', ru: 'Холодные закуски' },
@@ -63,6 +63,9 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const [viewDish, setViewDish] = useState<HolidayDish | null>(null)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
+  const { dishes: swrDishes, isLoading: isDishesLoading, mutate: mutateDishes } = useHolidayDishes(group.id)
+  const { members: swrMembers, isLoading: isMembersLoading, mutate: mutateMembers } = useHolidayGroupMembers(group.id)
+  const { inviteCode: swrInviteCode, isLoading: isInviteLoading, mutate: mutateInviteCode } = useHolidayInviteCode(group.id)
 
   // Realtime subscription с точечными обновлениями
   const { isConnected: isRealtimeConnected } = useHolidayRealtime(group.id, {
@@ -87,6 +90,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
           delete copy[payload.old.id]
           return copy
         })
+        void mutateDishes()
       }
     },
     onApprovals: (payload: RealtimePayload<HolidayDishApproval>) => {
@@ -135,6 +139,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         }
         return d
       }))
+      void mutateDishes()
     }
   })
 
@@ -142,36 +147,18 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
     if (!isMountedRef.current) return
     setIsLoading(true)
     try {
-      const [dishesData, membersData, code] = await Promise.all([
-        getHolidayDishes(group.id),
-        getHolidayGroupMembers(group.id),
-        getHolidayGroupInviteCode(group.id)
-      ])
+      await Promise.all([mutateMembers(), mutateInviteCode(), mutateDishes()])
       if (isMountedRef.current) {
-        setDishes(dishesData as HolidayDish[])
-        setMembers(membersData)
-        setInviteCode(code)
-        
-        // Загрузить апрувы для всех блюд
-        const approvalsMap: Record<string, any[]> = {}
-        const approvedByAllMap: Record<string, boolean> = {}
-        for (const dish of dishesData) {
-          const dishApprovals = await getHolidayDishApprovals(dish.id)
-          approvalsMap[dish.id] = dishApprovals
-          approvedByAllMap[dish.id] = await isHolidayDishApprovedByAll(dish.id)
-        }
-        setApprovals(approvalsMap)
-        setApprovedByAll(approvedByAllMap)
       }
     } catch (error) {
       console.error('Failed to load holiday group data:', error)
       showToast.error(error instanceof Error ? error.message : 'Failed to load data')
     } finally {
       if (isMountedRef.current) {
-        setIsLoading(false)
+        setIsLoading(isDishesLoading || isMembersLoading || isInviteLoading)
       }
     }
-  }, [group.id])
+  }, [mutateMembers, mutateInviteCode, mutateDishes, isDishesLoading, isMembersLoading, isInviteLoading])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -180,6 +167,50 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
       isMountedRef.current = false
     }
   }, [loadData])
+
+  // Подтягиваем блюда через SWR и рассчитываем approvals
+  useEffect(() => {
+    let cancelled = false
+    const sync = async () => {
+      if (!swrDishes) return
+      setDishes(swrDishes)
+      try {
+        const approvalsMap: Record<string, any[]> = {}
+        const approvedByAllMap: Record<string, boolean> = {}
+        for (const dish of swrDishes) {
+          const dishApprovals = await getHolidayDishApprovals(dish.id)
+          approvalsMap[dish.id] = dishApprovals
+          approvedByAllMap[dish.id] = await isHolidayDishApprovedByAll(dish.id)
+        }
+        if (!cancelled && isMountedRef.current) {
+          setApprovals(approvalsMap)
+          setApprovedByAll(approvedByAllMap)
+        }
+      } catch (error) {
+        console.error('Failed to load approvals', error)
+      } finally {
+        if (!cancelled && isMountedRef.current) {
+          setIsLoading(false)
+        }
+      }
+    }
+    sync()
+    return () => {
+      cancelled = true
+    }
+  }, [swrDishes])
+
+  // Синк участников
+  useEffect(() => {
+    if (!isMountedRef.current) return
+    setMembers(swrMembers || [])
+  }, [swrMembers])
+
+  // Синк инвайт-кода
+  useEffect(() => {
+    if (!isMountedRef.current) return
+    setInviteCode(swrInviteCode || null)
+  }, [swrInviteCode])
 
   const handleAddDish = async (name: string, category: HolidayDishCategory, asProduct: boolean) => {
     try {
@@ -217,6 +248,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
           console.error('Failed to mark product dish', e)
         }
       }
+      await mutateDishes()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add dish'
       showToast.error(message)
@@ -262,6 +294,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         setApprovedByAll(newApprovedByAll)
         showToast.success('Dish deleted successfully')
       }
+      await mutateDishes()
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : 'Failed to delete dish')
     }
