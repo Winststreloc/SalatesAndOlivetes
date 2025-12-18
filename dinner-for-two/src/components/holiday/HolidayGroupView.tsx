@@ -251,7 +251,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         onClose={() => setShowInviteModal(false)}
       />
 
-      <div className="flex flex-col h-screen bg-background overflow-y-auto">
+      <div className="flex flex-col h-screen bg-background">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <Button variant="ghost" onClick={onBack}>← Back</Button>
@@ -279,7 +279,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         </div>
       </div>
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 overflow-auto overflow-x-auto p-4">
         {showAddForm ? (
           <AddHolidayDishForm
             category={selectedCategory}
@@ -290,93 +290,95 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
             }}
           />
         ) : (
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'menu' | 'approved' | 'shopping')} className="w-full">
-            <TabsList className="w-full mb-4 overflow-x-auto flex gap-2">
-              <TabsTrigger value="menu" className="flex-shrink-0">
-                <Menu className="w-4 h-4 mr-2" />
-                {lang === 'ru' ? 'Меню' : 'Menu'}
-              </TabsTrigger>
-              <TabsTrigger value="approved" className="flex-shrink-0">
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                {lang === 'ru' ? 'Одобренные' : 'Approved'}
-              </TabsTrigger>
-              <TabsTrigger value="shopping" className="flex-shrink-0">
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                {lang === 'ru' ? 'Покупки' : 'Shopping'}
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="menu" className="space-y-4">
-              <Tabs defaultValue={categoryOrder[0]} className="w-full">
-            <TabsList className="w-full mb-4 overflow-x-auto flex flex-wrap gap-2">
-              {categoryOrder.map(category => (
-                <TabsTrigger key={category} value={category} className="text-xs flex-shrink-0">
-                  {CATEGORY_LABELS[category][lang]}
+          <div className="w-full overflow-x-auto">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'menu' | 'approved' | 'shopping')} className="w-full min-w-[320px]">
+              <TabsList className="w-full mb-4 overflow-x-auto flex gap-2">
+                <TabsTrigger value="menu" className="flex-shrink-0">
+                  <Menu className="w-4 h-4 mr-2" />
+                  {lang === 'ru' ? 'Меню' : 'Menu'}
                 </TabsTrigger>
+                <TabsTrigger value="approved" className="flex-shrink-0">
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  {lang === 'ru' ? 'Одобренные' : 'Approved'}
+                </TabsTrigger>
+                <TabsTrigger value="shopping" className="flex-shrink-0">
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  {lang === 'ru' ? 'Покупки' : 'Shopping'}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="menu" className="space-y-4">
+                <Tabs defaultValue={categoryOrder[0]} className="w-full">
+              <TabsList className="w-full mb-4 overflow-x-auto flex flex-wrap gap-2">
+                {categoryOrder.map(category => (
+                  <TabsTrigger key={category} value={category} className="text-xs flex-shrink-0">
+                    {CATEGORY_LABELS[category][lang]}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {categoryOrder.map(category => (
+                <TabsContent key={category} value={category} className="space-y-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-semibold">{CATEGORY_LABELS[category][lang]}</h2>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCategory(category)
+                        setShowAddForm(true)
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {t.add || 'Add'}
+                    </Button>
+                  </div>
+                  {dishesByCategory[category]?.length > 0 ? (
+                    dishesByCategory[category].map(dish => (
+                      <HolidayDishCard
+                        key={dish.id}
+                        dish={dish}
+                        approvals={approvals[dish.id] || []}
+                        isApprovedByAll={approvedByAll[dish.id] || false}
+                        membersCount={members.length}
+                        onApprove={() => handleApprove(dish.id)}
+                        onRemoveApproval={() => handleRemoveApproval(dish.id)}
+                        onDelete={() => handleDeleteDish(dish.id)}
+                        onShowIngredients={() => setIngredientEditorDish(dish)}
+                      />
+                    ))
+                  ) : (
+                    <Card>
+                      <CardContent className="p-6 text-center text-muted-foreground">
+                        {t.noDishes || 'No dishes in this category'}
+                      </CardContent>
+                    </Card>
+                  )}
+                </TabsContent>
               ))}
-            </TabsList>
-
-            {categoryOrder.map(category => (
-              <TabsContent key={category} value={category} className="space-y-3">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-semibold">{CATEGORY_LABELS[category][lang]}</h2>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setSelectedCategory(category)
-                      setShowAddForm(true)
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    {t.add || 'Add'}
-                  </Button>
-                </div>
-                {dishesByCategory[category]?.length > 0 ? (
-                  dishesByCategory[category].map(dish => (
-                    <HolidayDishCard
-                      key={dish.id}
-                      dish={dish}
-                      approvals={approvals[dish.id] || []}
-                      isApprovedByAll={approvedByAll[dish.id] || false}
-                      membersCount={members.length}
-                      onApprove={() => handleApprove(dish.id)}
-                      onRemoveApproval={() => handleRemoveApproval(dish.id)}
-                      onDelete={() => handleDeleteDish(dish.id)}
-                      onShowIngredients={() => setIngredientEditorDish(dish)}
-                    />
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="p-6 text-center text-muted-foreground">
-                      {t.noDishes || 'No dishes in this category'}
-                    </CardContent>
-                  </Card>
-                )}
+                </Tabs>
               </TabsContent>
-            ))}
-              </Tabs>
-            </TabsContent>
 
-            <TabsContent value="approved">
-              <HolidayApprovedDishesTab
-                dishes={dishes}
-                approvals={approvals}
-                approvedByAll={approvedByAll}
-                membersCount={members.length}
-                onApprove={handleApprove}
-                onRemoveApproval={handleRemoveApproval}
-                onDelete={handleDeleteDish}
-                onShowIngredients={(dish: HolidayDish) => setIngredientEditorDish(dish)}
-              />
-            </TabsContent>
+              <TabsContent value="approved">
+                <HolidayApprovedDishesTab
+                  dishes={dishes}
+                  approvals={approvals}
+                  approvedByAll={approvedByAll}
+                  membersCount={members.length}
+                  onApprove={handleApprove}
+                  onRemoveApproval={handleRemoveApproval}
+                  onDelete={handleDeleteDish}
+                  onShowIngredients={(dish: HolidayDish) => setIngredientEditorDish(dish)}
+                />
+              </TabsContent>
 
-            <TabsContent value="shopping">
-              <HolidayShoppingListTab
-                dishes={dishes}
-                approvedByAll={approvedByAll}
-              />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="shopping">
+                <HolidayShoppingListTab
+                  dishes={dishes}
+                  approvedByAll={approvedByAll}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
       </div>
     </div>
