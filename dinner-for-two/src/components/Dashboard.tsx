@@ -482,6 +482,7 @@ export function Dashboard() {
       <HolidayGroupsList
         onSelectGroup={(group) => setSelectedHolidayGroup(group)}
         onCreateGroup={() => {}}
+        onBack={() => setShowHolidayGroups(false)}
       />
     )
   }

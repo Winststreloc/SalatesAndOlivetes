@@ -7,7 +7,7 @@ import { useLang } from '@/components/LanguageProvider'
 import { getHolidayGroups, createHolidayGroup, joinHolidayGroup, getHolidayGroupInviteCode } from '@/app/actions'
 import { HolidayGroup } from '@/types'
 import { showToast } from '@/utils/toast'
-import { Plus, Users, Calendar } from 'lucide-react'
+import { Plus, Users, Calendar, ArrowLeft } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { HolidayInviteModal } from './HolidayInviteModal'
@@ -15,9 +15,10 @@ import { HolidayInviteModal } from './HolidayInviteModal'
 interface HolidayGroupsListProps {
   onSelectGroup: (group: HolidayGroup) => void
   onCreateGroup: () => void
+  onBack?: () => void
 }
 
-export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroupsListProps) {
+export function HolidayGroupsList({ onSelectGroup, onCreateGroup, onBack }: HolidayGroupsListProps) {
   const { t, lang } = useLang()
   const [groups, setGroups] = useState<HolidayGroup[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -108,6 +109,18 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroup
   if (showCreateForm) {
     return (
       <div className="p-4">
+        <div className="mb-4">
+          {onBack && (
+            <Button variant="ghost" onClick={() => {
+              setShowCreateForm(false)
+              setGroupName('')
+              setHolidayType('')
+            }} className="mb-2">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {lang === 'ru' ? 'Назад' : 'Back'}
+            </Button>
+          )}
+        </div>
         <Card>
           <CardContent className="p-6">
             <h2 className="text-xl font-bold mb-4">{lang === 'ru' ? 'Создать группу праздника' : 'Create Holiday Group'}</h2>
@@ -153,6 +166,17 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroup
   if (showJoinForm) {
     return (
       <div className="p-4">
+        <div className="mb-4">
+          {onBack && (
+            <Button variant="ghost" onClick={() => {
+              setShowJoinForm(false)
+              setInviteCode('')
+            }} className="mb-2">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              {lang === 'ru' ? 'Назад' : 'Back'}
+            </Button>
+          )}
+        </div>
         <Card>
           <CardContent className="p-6">
             <h2 className="text-xl font-bold mb-4">{lang === 'ru' ? 'Присоединиться к группе' : 'Join Holiday Group'}</h2>
@@ -204,7 +228,15 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroup
 
       <div className="flex flex-col h-screen bg-background">
         <div className="p-4 border-b">
-          <h1 className="text-2xl font-bold mb-4">{lang === 'ru' ? 'Группы праздников' : 'Holiday Groups'}</h1>
+          <div className="flex items-center justify-between mb-4">
+            {onBack && (
+              <Button variant="ghost" onClick={onBack} className="mr-2">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                {lang === 'ru' ? 'К паре' : 'Back to Couple'}
+              </Button>
+            )}
+            <h1 className="text-2xl font-bold flex-1">{lang === 'ru' ? 'Группы праздников' : 'Holiday Groups'}</h1>
+          </div>
           <div className="flex gap-2">
             <Button onClick={() => setShowCreateForm(true)} className="flex-1">
               <Plus className="w-4 h-4 mr-2" />
