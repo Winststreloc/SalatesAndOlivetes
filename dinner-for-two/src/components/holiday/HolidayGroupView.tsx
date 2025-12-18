@@ -251,7 +251,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         onClose={() => setShowInviteModal(false)}
       />
 
-      <div className="flex flex-col h-screen bg-background">
+      <div className="flex flex-col h-screen bg-background overflow-y-auto">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <Button variant="ghost" onClick={onBack}>← Back</Button>
@@ -279,7 +279,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 p-4">
         {showAddForm ? (
           <AddHolidayDishForm
             category={selectedCategory}
