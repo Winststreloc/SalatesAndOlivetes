@@ -84,8 +84,8 @@ export async function createHolidayGroup(name: string, holidayType?: string) {
     throw dbError
   }
 
-  revalidateTag('holiday-groups-list', 'page')
-  revalidateTag(`holiday-group-${group.id}`, 'page')
+  revalidateTag('holiday-groups-list')
+  revalidateTag(`holiday-group-${group.id}`)
   revalidatePath('/')
   return group
 }
@@ -154,8 +154,8 @@ export async function joinHolidayGroup(inviteCode: string) {
     throw dbError
   }
 
-  revalidateTag('holiday-groups-list', 'page')
-  revalidateTag(`holiday-group-${group.id}`, 'page')
+  revalidateTag('holiday-groups-list')
+  revalidateTag(`holiday-group-${group.id}`)
   revalidatePath('/')
   return group
 }
@@ -311,8 +311,8 @@ export async function leaveHolidayGroup(groupId: string) {
     throw dbError
   }
 
-  revalidateTag('holiday-groups-list', 'page')
-  revalidateTag(`holiday-group-${groupId}`, 'page')
+  revalidateTag('holiday-groups-list')
+  revalidateTag(`holiday-group-${groupId}`)
   revalidatePath('/')
 }
 

@@ -76,7 +76,7 @@ export async function addHolidayDishIngredient(holidayDishId: string, name: stri
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${dish.holiday_group_id}`, 'page')
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`)
   revalidatePath('/')
 }
 
@@ -166,7 +166,7 @@ export async function updateHolidayDishIngredient(ingredientId: string, name: st
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${groupId}`, 'page')
+  revalidateTag(`holiday-group-${groupId}`)
   revalidatePath('/')
 }
 
@@ -246,7 +246,7 @@ export async function deleteHolidayDishIngredient(ingredientId: string) {
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${groupId}`, 'page')
+  revalidateTag(`holiday-group-${groupId}`)
   revalidatePath('/')
 }
 
@@ -329,7 +329,7 @@ export async function toggleHolidayIngredientPurchased(ingredientId: string, isP
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${holidayGroupId}`, 'page')
+  revalidateTag(`holiday-group-${holidayGroupId}`)
   revalidatePath('/')
 }
 
@@ -407,7 +407,7 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
     .filter((id): id is string => Boolean(id))
     .map(id => `holiday-group-${id}`) || []
 
-  tags.forEach(tag => revalidateTag(tag, 'page'))
+  tags.forEach(tag => revalidateTag(tag))
   revalidatePath('/')
 }
 
