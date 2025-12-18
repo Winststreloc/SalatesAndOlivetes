@@ -135,20 +135,15 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         setShowAddForm(false)
         setSelectedCategory(null)
         showToast.success(t.addSuccess || 'Dish added successfully')
-        // Запустить AI генерацию ингредиентов
-        try {
-          await generateHolidayDishIngredients(dish.id, dish.name, lang)
-        } catch (e) {
-          showToast.error(e instanceof Error ? e.message : 'AI generation failed')
-        }
-        // Обновить данные блюда/апрувов
+        // Загрузить апрувы для нового блюда
         const dishApprovals = await getHolidayDishApprovals(dish.id)
         setApprovals(prev => ({ ...prev, [dish.id]: dishApprovals }))
         setApprovedByAll(prev => ({ ...prev, [dish.id]: false }))
-        await loadData()
       }
     } catch (error) {
-      showToast.error(error instanceof Error ? error.message : 'Failed to add dish')
+      // Более мягкое сообщение, если ошибка пришла с сервера
+      const message = error instanceof Error ? error.message : 'Failed to add dish'
+      showToast.error(message)
     }
   }
 
