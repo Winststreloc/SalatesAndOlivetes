@@ -18,6 +18,7 @@ import {
   generateHolidayDishIngredients,
   addHolidayDishIngredient
 } from '@/app/actions'
+import { toggleHolidayIngredientsPurchased } from '@/app/actions/holidayIngredients'
 import { HolidayGroup, HolidayDish, HolidayDishCategory, RealtimePayload } from '@/types'
 import { generateHolidayInviteLink } from '@/utils/telegram'
 import { showToast } from '@/utils/toast'
@@ -155,6 +156,32 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
       // Более мягкое сообщение, если ошибка пришла с сервера
       const message = error instanceof Error ? error.message : 'Failed to add dish'
       showToast.error(message)
+    }
+  }
+
+  const handleToggleIngredients = async (ingredientIds: string[], newStatus: boolean) => {
+    // оптимистично обновляем локальное состояние
+    if (isMountedRef.current) {
+      setDishes(prev => prev.map(d => ({
+        ...d,
+        holiday_dish_ingredients: d.holiday_dish_ingredients?.map(ing =>
+          ingredientIds.includes(ing.id) ? { ...ing, is_purchased: newStatus } : ing
+        )
+      })))
+    }
+    try {
+      await toggleHolidayIngredientsPurchased(ingredientIds, newStatus)
+    } catch (e) {
+      // откат если ошибка
+      if (isMountedRef.current) {
+        setDishes(prev => prev.map(d => ({
+          ...d,
+          holiday_dish_ingredients: d.holiday_dish_ingredients?.map(ing =>
+            ingredientIds.includes(ing.id) ? { ...ing, is_purchased: !newStatus } : ing
+          )
+        })))
+      }
+      throw e
     }
   }
 
@@ -392,7 +419,8 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                 <HolidayShoppingListTab
                   dishes={dishes}
                   approvedByAll={approvedByAll}
-                  onUpdated={loadData}
+                onUpdated={loadData}
+                onToggleIngredient={handleToggleIngredients}
                 />
               </TabsContent>
             </Tabs>

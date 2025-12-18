@@ -15,6 +15,7 @@ interface HolidayShoppingListTabProps {
   dishes: HolidayDish[]
   approvedByAll: Record<string, boolean>
   onUpdated?: () => void | Promise<void>
+  onToggleIngredient?: (ids: string[], newStatus: boolean) => Promise<void>
 }
 
 interface ShoppingListItem {
@@ -27,7 +28,7 @@ interface ShoppingListItem {
   dishNames: string[]
 }
 
-export function HolidayShoppingListTab({ dishes, approvedByAll, onUpdated }: HolidayShoppingListTabProps) {
+export function HolidayShoppingListTab({ dishes, approvedByAll, onUpdated, onToggleIngredient }: HolidayShoppingListTabProps) {
   const { t, lang } = useLang()
   const [showPurchased, setShowPurchased] = useState(false)
 
@@ -116,10 +117,13 @@ export function HolidayShoppingListTab({ dishes, approvedByAll, onUpdated }: Hol
   const handleToggleIngredient = async (item: ShoppingListItem) => {
     try {
       const newStatus = !item.is_purchased
-      await toggleHolidayIngredientsPurchased(item.ids, newStatus)
+      if (onToggleIngredient) {
+        await onToggleIngredient(item.ids, newStatus)
+      } else {
+        await toggleHolidayIngredientsPurchased(item.ids, newStatus)
+        if (onUpdated) await onUpdated()
+      }
       showToast.success(lang === 'ru' ? 'Обновлено' : 'Updated')
-      // Обновим данные сразу, чтобы чекбокс отразился
-      if (onUpdated) await onUpdated()
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : 'Failed to update')
     }
