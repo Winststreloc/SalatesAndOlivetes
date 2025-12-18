@@ -36,7 +36,11 @@ export default function Home() {
               showToast.success(lang === 'ru' ? 'Вы присоединились к группе праздника' : 'Joined holiday group')
               router.replace(`${window.location.pathname}?holiday=groups`)
             } catch (error) {
-              showToast.error(error instanceof Error ? error.message : 'Failed to join group')
+              const msg = error instanceof Error ? error.message : ''
+              const friendly = lang === 'ru'
+                ? 'Группа не найдена или ссылка недействительна'
+                : 'Group not found or invite link is invalid'
+              showToast.error(msg || friendly)
             } finally {
               setProcessingInvite(false)
             }
@@ -58,7 +62,11 @@ export default function Home() {
           // Очистить URL и перейти в группы
           router.replace(`${window.location.pathname}?holiday=groups`)
         } catch (error) {
-          showToast.error(error instanceof Error ? error.message : 'Failed to join group')
+          const msg = error instanceof Error ? error.message : ''
+          const friendly = lang === 'ru'
+            ? 'Группа не найдена или ссылка недействительна'
+            : 'Group not found or invite link is invalid'
+          showToast.error(msg || friendly)
         } finally {
           setProcessingInvite(false)
         }
