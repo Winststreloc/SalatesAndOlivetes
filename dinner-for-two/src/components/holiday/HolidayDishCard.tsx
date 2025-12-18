@@ -86,15 +86,14 @@ export function HolidayDishCard({
                 {lang === 'ru' ? 'Одобрить' : 'Approve'}
               </Button>
             )}
-            {dish.created_by === user?.id && (
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={onDelete}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={onDelete}
+              disabled={!onDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
         </div>
       </CardContent>

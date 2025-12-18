@@ -71,17 +71,19 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
     }
   }
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     setIsGenerating(true)
-    try {
-      await generateHolidayDishIngredients(dish.id, dish.name, lang)
-      await onUpdated()
-      showToast.success(lang === 'ru' ? 'Сгенерировано' : 'Generated')
-    } catch (e) {
-      showToast.error(e instanceof Error ? e.message : 'Failed to generate')
-    } finally {
-      setIsGenerating(false)
-    }
+    showToast.success(lang === 'ru' ? 'Генерация запущена' : 'Generation started')
+    // Запускаем генерацию в фоне, чтобы не блокировать другие действия
+    void generateHolidayDishIngredients(dish.id, dish.name, lang)
+      .then(async () => {
+        await onUpdated()
+        showToast.success(lang === 'ru' ? 'Сгенерировано' : 'Generated')
+      })
+      .catch(e => {
+        showToast.error(e instanceof Error ? e.message : 'Failed to generate')
+      })
+      .finally(() => setIsGenerating(false))
   }
 
   if (!isOpen) return null
