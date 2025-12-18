@@ -88,7 +88,7 @@ export async function approveHolidayDish(dishId: string) {
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${dish.holiday_group_id}`)
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`, { expire: 60 })
   revalidatePath('/')
   return { success: true, alreadyApproved: false }
 }
@@ -132,7 +132,7 @@ export async function removeHolidayDishApproval(dishId: string) {
     .single()
 
   if (dish?.holiday_group_id) {
-    revalidateTag(`holiday-group-${dish.holiday_group_id}`)
+    revalidateTag(`holiday-group-${dish.holiday_group_id}`, { expire: 60 })
   }
   revalidatePath('/')
 }

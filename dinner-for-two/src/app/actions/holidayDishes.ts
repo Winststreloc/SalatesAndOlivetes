@@ -66,7 +66,7 @@ export async function addHolidayDish(
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${holidayGroupId}`)
+  revalidateTag(`holiday-group-${holidayGroupId}`, { expire: 60 })
   revalidatePath('/')
   return dish
 }
@@ -198,7 +198,7 @@ export async function deleteHolidayDish(dishId: string) {
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${dish.holiday_group_id}`)
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`, { expire: 60 })
   revalidatePath('/')
 }
 
@@ -271,7 +271,7 @@ export async function updateHolidayDishRecipe(dishId: string, recipe: string) {
     throw dbError
   }
 
-  revalidateTag(`holiday-group-${dish.holiday_group_id}`)
+  revalidateTag(`holiday-group-${dish.holiday_group_id}`, { expire: 60 })
   revalidatePath('/')
   return data
 }
