@@ -14,7 +14,8 @@ import {
   getHolidayDishApprovals,
   isHolidayDishApprovedByAll,
   getHolidayGroupMembers,
-  getHolidayGroupInviteCode
+  getHolidayGroupInviteCode,
+  generateHolidayDishIngredients
 } from '@/app/actions'
 import { HolidayGroup, HolidayDish, HolidayDishCategory, RealtimePayload } from '@/types'
 import { generateHolidayInviteLink } from '@/utils/telegram'
@@ -26,6 +27,7 @@ import { useHolidayRealtime } from '@/hooks/useHolidayRealtime'
 import { HolidayInviteModal } from './HolidayInviteModal'
 import { HolidayApprovedDishesTab } from './HolidayApprovedDishesTab'
 import { HolidayShoppingListTab } from './HolidayShoppingListTab'
+import { HolidayIngredientEditor } from './HolidayIngredientEditor'
 
 const CATEGORY_LABELS: Record<HolidayDishCategory, { en: string; ru: string }> = {
   cold_appetizers: { en: 'Cold Appetizers', ru: 'Холодные закуски' },
@@ -54,6 +56,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const [approvedByAll, setApprovedByAll] = useState<Record<string, boolean>>({})
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'menu' | 'approved' | 'shopping'>('menu')
+  const [ingredientEditorDish, setIngredientEditorDish] = useState<HolidayDish | null>(null)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
 
@@ -131,10 +134,17 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         setShowAddForm(false)
         setSelectedCategory(null)
         showToast.success(t.addSuccess || 'Dish added successfully')
-        // Загрузить апрувы для нового блюда
+        // Запустить AI генерацию ингредиентов
+        try {
+          await generateHolidayDishIngredients(dish.id, dish.name, lang)
+        } catch (e) {
+          showToast.error(e instanceof Error ? e.message : 'AI generation failed')
+        }
+        // Обновить данные блюда/апрувов
         const dishApprovals = await getHolidayDishApprovals(dish.id)
         setApprovals(prev => ({ ...prev, [dish.id]: dishApprovals }))
         setApprovedByAll(prev => ({ ...prev, [dish.id]: false }))
+        await loadData()
       }
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : 'Failed to add dish')
@@ -341,6 +351,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                       onApprove={() => handleApprove(dish.id)}
                       onRemoveApproval={() => handleRemoveApproval(dish.id)}
                       onDelete={() => handleDeleteDish(dish.id)}
+                      onShowIngredients={() => setIngredientEditorDish(dish)}
                     />
                   ))
                 ) : (
@@ -364,6 +375,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                 onApprove={handleApprove}
                 onRemoveApproval={handleRemoveApproval}
                 onDelete={handleDeleteDish}
+                onShowIngredients={(dish: HolidayDish) => setIngredientEditorDish(dish)}
               />
             </TabsContent>
 
@@ -377,6 +389,12 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         )}
       </div>
     </div>
+      <HolidayIngredientEditor
+        dish={ingredientEditorDish as any}
+        isOpen={!!ingredientEditorDish}
+        onClose={() => setIngredientEditorDish(null)}
+        onUpdated={loadData}
+      />
     </>
   )
 }
