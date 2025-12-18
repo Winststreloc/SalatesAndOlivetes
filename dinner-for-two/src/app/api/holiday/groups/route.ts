@@ -3,8 +3,6 @@
 import { NextResponse } from 'next/server'
 import { getHolidayGroups } from '@/app/actions/holidayGroups'
 
-export const runtime = 'nodejs'
-
 export async function GET() {
   try {
     const groups = await getHolidayGroups()
