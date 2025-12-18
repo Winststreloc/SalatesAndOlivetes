@@ -2,7 +2,7 @@ import useSWR from 'swr'
 import { HolidayGroup } from '@/types'
 
 const fetcher = async (url: string) => {
-  const res = await fetch(url)
+  const res = await fetch(url, { credentials: 'include' })
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text || 'Failed to fetch')
