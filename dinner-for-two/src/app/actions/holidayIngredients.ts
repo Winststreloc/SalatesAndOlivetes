@@ -112,7 +112,11 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
   if (!ingredients || ingredients.length === 0) return
 
   // Проверить, что все ингредиенты принадлежат группам, в которых пользователь является участником
-  const groupIds = [...new Set(ingredients.map(ing => ing.holiday_dishes.holiday_group_id))]
+  const groupIds = [...new Set(
+    ingredients
+      .map(ing => ing.holiday_dishes?.[0]?.holiday_group_id)
+      .filter((id): id is string => Boolean(id))
+  )]
   
   const { data: members } = await supabase
     .from('holiday_members')
@@ -133,7 +137,10 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
 
   const memberGroupIds = new Set(members.map(m => m.holiday_group_id))
   const validIngredientIds = ingredients
-    .filter(ing => memberGroupIds.has(ing.holiday_dishes.holiday_group_id))
+    .filter(ing => {
+      const groupId = ing.holiday_dishes?.[0]?.holiday_group_id
+      return groupId ? memberGroupIds.has(groupId) : false
+    })
     .map(ing => ing.id)
 
   if (validIngredientIds.length === 0) return
