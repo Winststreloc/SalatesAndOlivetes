@@ -253,9 +253,9 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
 
       <div className="flex flex-col h-screen bg-background">
         <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
             <Button variant="ghost" onClick={onBack}>← Back</Button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
               {isRealtimeConnected && (
                 <span className="text-green-500 text-xs">●</span>
               )}
@@ -291,16 +291,16 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
           />
         ) : (
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'menu' | 'approved' | 'shopping')} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="menu">
+            <TabsList className="w-full mb-4 overflow-x-auto flex gap-2">
+              <TabsTrigger value="menu" className="flex-shrink-0">
                 <Menu className="w-4 h-4 mr-2" />
                 {lang === 'ru' ? 'Меню' : 'Menu'}
               </TabsTrigger>
-              <TabsTrigger value="approved">
+              <TabsTrigger value="approved" className="flex-shrink-0">
                 <CheckCircle2 className="w-4 h-4 mr-2" />
                 {lang === 'ru' ? 'Одобренные' : 'Approved'}
               </TabsTrigger>
-              <TabsTrigger value="shopping">
+              <TabsTrigger value="shopping" className="flex-shrink-0">
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 {lang === 'ru' ? 'Покупки' : 'Shopping'}
               </TabsTrigger>
@@ -308,22 +308,13 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
 
             <TabsContent value="menu" className="space-y-4">
               <Tabs defaultValue={categoryOrder[0]} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-4">
-              {categoryOrder.slice(0, 4).map(category => (
-                <TabsTrigger key={category} value={category} className="text-xs">
+            <TabsList className="w-full mb-4 overflow-x-auto flex flex-wrap gap-2">
+              {categoryOrder.map(category => (
+                <TabsTrigger key={category} value={category} className="text-xs flex-shrink-0">
                   {CATEGORY_LABELS[category][lang]}
                 </TabsTrigger>
               ))}
             </TabsList>
-            {categoryOrder.slice(4).length > 0 && (
-              <TabsList className="grid w-full grid-cols-3 mb-4">
-                {categoryOrder.slice(4).map(category => (
-                  <TabsTrigger key={category} value={category} className="text-xs">
-                    {CATEGORY_LABELS[category][lang]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            )}
 
             {categoryOrder.map(category => (
               <TabsContent key={category} value={category} className="space-y-3">

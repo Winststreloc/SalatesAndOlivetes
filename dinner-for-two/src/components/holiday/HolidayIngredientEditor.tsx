@@ -88,7 +88,7 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
+      <Card className="w-full max-w-md md:max-w-lg">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{lang === 'ru' ? 'Ингредиенты' : 'Ingredients'}</CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -112,9 +112,9 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
               </p>
             )}
             {ingredients.map((ing, idx) => (
-              <div key={ing.id} className="grid grid-cols-12 gap-2 items-center">
+              <div key={ing.id} className="grid grid-cols-12 md:grid-cols-12 gap-2 items-center">
                 <Input
-                  className="col-span-5"
+                  className="col-span-12 md:col-span-5"
                   value={ing.name}
                   onChange={(e) => {
                     const val = e.target.value
@@ -122,7 +122,7 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
                   }}
                 />
                 <Input
-                  className="col-span-3"
+                  className="col-span-6 md:col-span-3"
                   value={ing.amount || ''}
                   onChange={(e) => {
                     const val = e.target.value
@@ -131,7 +131,7 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
                   placeholder={lang === 'ru' ? 'Кол-во' : 'Amount'}
                 />
                 <Input
-                  className="col-span-2"
+                  className="col-span-6 md:col-span-2"
                   value={ing.unit || ''}
                   onChange={(e) => {
                     const val = e.target.value
@@ -139,7 +139,7 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
                   }}
                   placeholder={lang === 'ru' ? 'Ед.' : 'Unit'}
                 />
-                <div className="col-span-2 flex gap-1 justify-end">
+                <div className="col-span-12 md:col-span-2 flex gap-1 justify-end">
                   <Button size="icon" variant="ghost" onClick={() => handleUpdate(ingredients[idx])} disabled={isSaving}>
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : '✓'}
                   </Button>
@@ -153,26 +153,26 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
 
           <div className="border-t" />
 
-          <div className="grid grid-cols-12 gap-2 items-center">
+          <div className="grid grid-cols-12 md:grid-cols-12 gap-2 items-center">
             <Input
-              className="col-span-5"
+              className="col-span-12 md:col-span-5"
               value={newIngredient.name}
               onChange={(e) => setNewIngredient(prev => ({ ...prev, name: e.target.value }))}
               placeholder={lang === 'ru' ? 'Новый ингредиент' : 'New ingredient'}
             />
             <Input
-              className="col-span-3"
+              className="col-span-6 md:col-span-3"
               value={newIngredient.amount}
               onChange={(e) => setNewIngredient(prev => ({ ...prev, amount: e.target.value }))}
               placeholder={lang === 'ru' ? 'Кол-во' : 'Amount'}
             />
             <Input
-              className="col-span-2"
+              className="col-span-6 md:col-span-2"
               value={newIngredient.unit}
               onChange={(e) => setNewIngredient(prev => ({ ...prev, unit: e.target.value }))}
               placeholder={lang === 'ru' ? 'Ед.' : 'Unit'}
             />
-            <Button size="sm" className="col-span-2" onClick={handleAdd} disabled={isSaving || !newIngredient.name.trim()}>
+            <Button size="sm" className="col-span-12 md:col-span-2" onClick={handleAdd} disabled={isSaving || !newIngredient.name.trim()}>
               <Plus className="w-4 h-4 mr-2" />
               {lang === 'ru' ? 'Добавить' : 'Add'}
             </Button>
