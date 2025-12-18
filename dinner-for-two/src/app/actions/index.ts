@@ -8,6 +8,7 @@ export * from './auth'
 export * from './holidayGroups'
 export * from './holidayDishes'
 export * from './holidayApprovals'
+export * from './holidayIngredients'
 export { generateHolidayIdeas } from './ai'
 
 

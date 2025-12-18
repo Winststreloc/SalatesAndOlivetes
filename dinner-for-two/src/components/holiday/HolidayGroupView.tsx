@@ -19,11 +19,13 @@ import {
 import { HolidayGroup, HolidayDish, HolidayDishCategory, RealtimePayload } from '@/types'
 import { generateHolidayInviteLink } from '@/utils/telegram'
 import { showToast } from '@/utils/toast'
-import { CheckCircle2, XCircle, Users, Share2, Plus } from 'lucide-react'
+import { Users, Share2, Plus, Menu, ShoppingCart, CheckCircle2 } from 'lucide-react'
 import { AddHolidayDishForm } from './AddHolidayDishForm'
 import { HolidayDishCard } from './HolidayDishCard'
 import { useHolidayRealtime } from '@/hooks/useHolidayRealtime'
 import { HolidayInviteModal } from './HolidayInviteModal'
+import { HolidayApprovedDishesTab } from './HolidayApprovedDishesTab'
+import { HolidayShoppingListTab } from './HolidayShoppingListTab'
 
 const CATEGORY_LABELS: Record<HolidayDishCategory, { en: string; ru: string }> = {
   cold_appetizers: { en: 'Cold Appetizers', ru: 'Холодные закуски' },
@@ -51,6 +53,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const [approvals, setApprovals] = useState<Record<string, any[]>>({})
   const [approvedByAll, setApprovedByAll] = useState<Record<string, boolean>>({})
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'menu' | 'approved' | 'shopping'>('menu')
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
 
@@ -69,6 +72,10 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
     },
     onApprovals: () => {
       // Перезагрузить апрувы при изменении
+      loadData()
+    },
+    onIngredients: () => {
+      // Перезагрузить данные при изменении ингредиентов
       loadData()
     }
   })
@@ -273,7 +280,24 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
             }}
           />
         ) : (
-          <Tabs defaultValue={categoryOrder[0]} className="w-full">
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'menu' | 'approved' | 'shopping')} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="menu">
+                <Menu className="w-4 h-4 mr-2" />
+                {lang === 'ru' ? 'Меню' : 'Menu'}
+              </TabsTrigger>
+              <TabsTrigger value="approved">
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                {lang === 'ru' ? 'Одобренные' : 'Approved'}
+              </TabsTrigger>
+              <TabsTrigger value="shopping">
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                {lang === 'ru' ? 'Покупки' : 'Shopping'}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="menu" className="space-y-4">
+              <Tabs defaultValue={categoryOrder[0]} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-4">
               {categoryOrder.slice(0, 4).map(category => (
                 <TabsTrigger key={category} value={category} className="text-xs">
@@ -328,6 +352,27 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                 )}
               </TabsContent>
             ))}
+              </Tabs>
+            </TabsContent>
+
+            <TabsContent value="approved">
+              <HolidayApprovedDishesTab
+                dishes={dishes}
+                approvals={approvals}
+                approvedByAll={approvedByAll}
+                membersCount={members.length}
+                onApprove={handleApprove}
+                onRemoveApproval={handleRemoveApproval}
+                onDelete={handleDeleteDish}
+              />
+            </TabsContent>
+
+            <TabsContent value="shopping">
+              <HolidayShoppingListTab
+                dishes={dishes}
+                approvedByAll={approvedByAll}
+              />
+            </TabsContent>
           </Tabs>
         )}
       </div>

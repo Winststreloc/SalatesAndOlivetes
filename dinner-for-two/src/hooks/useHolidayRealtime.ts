@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { RealtimePayload, HolidayDish, HolidayDishApproval } from '@/types'
+import { RealtimePayload, HolidayDish, HolidayDishApproval, HolidayDishIngredient } from '@/types'
 
 type Callback<T> = (payload: RealtimePayload<T>) => void
 
 interface HolidayRealtimeHandlers {
   onDishes?: Callback<HolidayDish>
   onApprovals?: Callback<HolidayDishApproval>
+  onIngredients?: Callback<HolidayDishIngredient>
 }
 
 export function useHolidayRealtime(holidayGroupId?: string | null, handlers: HolidayRealtimeHandlers = {}) {
@@ -19,7 +20,7 @@ export function useHolidayRealtime(holidayGroupId?: string | null, handlers: Hol
   // Update handlers ref when they change, but don't recreate subscription
   useEffect(() => {
     handlersRef.current = handlers
-  }, [handlers.onDishes, handlers.onApprovals])
+  }, [handlers.onDishes, handlers.onApprovals, handlers.onIngredients])
 
   useEffect(() => {
     if (!holidayGroupId) return
@@ -50,6 +51,17 @@ export function useHolidayRealtime(holidayGroupId?: string | null, handlers: Hol
       table: 'holiday_dish_approvals'
     }, (payload: RealtimePayload<HolidayDishApproval>) => {
       handlersRef.current.onApprovals?.(payload)
+    })
+
+    // Subscribe to holiday_dish_ingredients changes
+    // Подписываемся на все изменения ингредиентов через изменения блюд
+    // (так как ингредиенты связаны с блюдами, которые принадлежат группе)
+    ;(channel as any).on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'holiday_dish_ingredients'
+    }, (payload: RealtimePayload<HolidayDishIngredient>) => {
+      handlersRef.current.onIngredients?.(payload)
     })
 
     channel.subscribe((status) => {
