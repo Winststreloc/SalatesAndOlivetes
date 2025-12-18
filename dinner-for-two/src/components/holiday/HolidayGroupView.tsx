@@ -15,7 +15,8 @@ import {
   isHolidayDishApprovedByAll,
   getHolidayGroupMembers,
   getHolidayGroupInviteCode,
-  generateHolidayDishIngredients
+  generateHolidayDishIngredients,
+  addHolidayDishIngredient
 } from '@/app/actions'
 import { HolidayGroup, HolidayDish, HolidayDishCategory, RealtimePayload } from '@/types'
 import { generateHolidayInviteLink } from '@/utils/telegram'
@@ -174,6 +175,17 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
       await approveHolidayDish(dishId)
       const dishApprovals = await getHolidayDishApprovals(dishId)
       const isApproved = await isHolidayDishApprovedByAll(dishId)
+      const dish = dishes.find(d => d.id === dishId)
+      // Если блюдо без ингредиентов (например, алкоголь), добавим сам товар в покупки
+      if (dish && (!dish.holiday_dish_ingredients || dish.holiday_dish_ingredients.length === 0)) {
+        try {
+          await addHolidayDishIngredient(dish.id, dish.name, '', '')
+          await loadData()
+        } catch (e) {
+          // не блокируем основное действие
+          console.error('Failed to add dish as ingredient', e)
+        }
+      }
       if (isMountedRef.current) {
         setApprovals(prev => ({ ...prev, [dishId]: dishApprovals }))
         setApprovedByAll(prev => ({ ...prev, [dishId]: isApproved }))
