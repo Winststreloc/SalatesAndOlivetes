@@ -319,55 +319,45 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="menu" className="space-y-4">
-                <Tabs defaultValue={categoryOrder[0]} className="w-full">
-              <TabsList className="w-full mb-4 overflow-x-auto flex flex-wrap gap-2">
+              <TabsContent value="menu" className="space-y-6">
                 {categoryOrder.map(category => (
-                  <TabsTrigger key={category} value={category} className="text-xs flex-shrink-0">
-                    {CATEGORY_LABELS[category][lang]}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {categoryOrder.map(category => (
-                <TabsContent key={category} value={category} className="space-y-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-lg font-semibold">{CATEGORY_LABELS[category][lang]}</h2>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setSelectedCategory(category)
-                        setShowAddForm(true)
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      {t.add || 'Add'}
-                    </Button>
+                  <div key={category} className="space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-lg font-semibold">{CATEGORY_LABELS[category][lang]}</h2>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCategory(category)
+                          setShowAddForm(true)
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        {t.add || 'Add'}
+                      </Button>
+                    </div>
+                    {dishesByCategory[category]?.length > 0 ? (
+                      dishesByCategory[category].map(dish => (
+                        <HolidayDishCard
+                          key={dish.id}
+                          dish={dish}
+                          approvals={approvals[dish.id] || []}
+                          isApprovedByAll={approvedByAll[dish.id] || false}
+                          membersCount={members.length}
+                          onApprove={() => handleApprove(dish.id)}
+                          onRemoveApproval={() => handleRemoveApproval(dish.id)}
+                          onDelete={() => handleDeleteDish(dish.id)}
+                          onShowIngredients={() => setIngredientEditorDish(dish)}
+                        />
+                      ))
+                    ) : (
+                      <Card>
+                        <CardContent className="p-6 text-center text-muted-foreground">
+                          {t.noDishes || 'No dishes in this category'}
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
-                  {dishesByCategory[category]?.length > 0 ? (
-                    dishesByCategory[category].map(dish => (
-                      <HolidayDishCard
-                        key={dish.id}
-                        dish={dish}
-                        approvals={approvals[dish.id] || []}
-                        isApprovedByAll={approvedByAll[dish.id] || false}
-                        membersCount={members.length}
-                        onApprove={() => handleApprove(dish.id)}
-                        onRemoveApproval={() => handleRemoveApproval(dish.id)}
-                        onDelete={() => handleDeleteDish(dish.id)}
-                        onShowIngredients={() => setIngredientEditorDish(dish)}
-                      />
-                    ))
-                  ) : (
-                    <Card>
-                      <CardContent className="p-6 text-center text-muted-foreground">
-                        {t.noDishes || 'No dishes in this category'}
-                      </CardContent>
-                    </Card>
-                  )}
-                </TabsContent>
-              ))}
-                </Tabs>
+                ))}
               </TabsContent>
 
               <TabsContent value="approved">
