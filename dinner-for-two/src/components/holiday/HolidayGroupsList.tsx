@@ -4,12 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useLang } from '@/components/LanguageProvider'
-import { getHolidayGroups, createHolidayGroup, joinHolidayGroup } from '@/app/actions'
+import { getHolidayGroups, createHolidayGroup, joinHolidayGroup, getHolidayGroupInviteCode } from '@/app/actions'
 import { HolidayGroup } from '@/types'
 import { showToast } from '@/utils/toast'
 import { Plus, Users, Calendar } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { HolidayInviteModal } from './HolidayInviteModal'
 
 interface HolidayGroupsListProps {
   onSelectGroup: (group: HolidayGroup) => void
@@ -25,6 +26,10 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroup
   const [groupName, setGroupName] = useState('')
   const [holidayType, setHolidayType] = useState('')
   const [inviteCode, setInviteCode] = useState('')
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [createdGroup, setCreatedGroup] = useState<HolidayGroup | null>(null)
+  const [createdGroupInviteCode, setCreatedGroupInviteCode] = useState<string | null>(null)
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
 
   const loadGroups = useCallback(async () => {
@@ -63,8 +68,12 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroup
         setShowCreateForm(false)
         setGroupName('')
         setHolidayType('')
-        showToast.success(lang === 'ru' ? 'Группа создана' : 'Group created')
-        onSelectGroup(group as HolidayGroup)
+        
+        // Получить код приглашения для новой группы
+        const code = await getHolidayGroupInviteCode(group.id)
+        setCreatedGroup(group as HolidayGroup)
+        setCreatedGroupInviteCode(code)
+        setShowInviteModal(true)
       }
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : 'Failed to create group')
@@ -177,19 +186,35 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroup
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <div className="p-4 border-b">
-        <h1 className="text-2xl font-bold mb-4">{lang === 'ru' ? 'Группы праздников' : 'Holiday Groups'}</h1>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowCreateForm(true)} className="flex-1">
-            <Plus className="w-4 h-4 mr-2" />
-            {lang === 'ru' ? 'Создать группу' : 'Create Group'}
-          </Button>
-          <Button onClick={() => setShowJoinForm(true)} variant="outline" className="flex-1">
-            {lang === 'ru' ? 'Присоединиться' : 'Join Group'}
-          </Button>
+    <>
+      <HolidayInviteModal
+        isOpen={showInviteModal}
+        inviteCode={createdGroupInviteCode}
+        groupName={createdGroup?.name || ''}
+        botUsername={botUsername}
+        onClose={() => {
+          setShowInviteModal(false)
+          if (createdGroup) {
+            onSelectGroup(createdGroup)
+            setCreatedGroup(null)
+            setCreatedGroupInviteCode(null)
+          }
+        }}
+      />
+
+      <div className="flex flex-col h-screen bg-background">
+        <div className="p-4 border-b">
+          <h1 className="text-2xl font-bold mb-4">{lang === 'ru' ? 'Группы праздников' : 'Holiday Groups'}</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowCreateForm(true)} className="flex-1">
+              <Plus className="w-4 h-4 mr-2" />
+              {lang === 'ru' ? 'Создать группу' : 'Create Group'}
+            </Button>
+            <Button onClick={() => setShowJoinForm(true)} variant="outline" className="flex-1">
+              {lang === 'ru' ? 'Присоединиться' : 'Join Group'}
+            </Button>
+          </div>
         </div>
-      </div>
 
       <div className="flex-1 overflow-auto p-4">
         {groups.length === 0 ? (
@@ -234,6 +259,7 @@ export function HolidayGroupsList({ onSelectGroup, onCreateGroup }: HolidayGroup
         )}
       </div>
     </div>
+    </>
   )
 }
 

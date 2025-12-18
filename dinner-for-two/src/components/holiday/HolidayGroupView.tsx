@@ -23,6 +23,7 @@ import { CheckCircle2, XCircle, Users, Share2, Plus } from 'lucide-react'
 import { AddHolidayDishForm } from './AddHolidayDishForm'
 import { HolidayDishCard } from './HolidayDishCard'
 import { useHolidayRealtime } from '@/hooks/useHolidayRealtime'
+import { HolidayInviteModal } from './HolidayInviteModal'
 
 const CATEGORY_LABELS: Record<HolidayDishCategory, { en: string; ru: string }> = {
   cold_appetizers: { en: 'Cold Appetizers', ru: 'Холодные закуски' },
@@ -49,6 +50,8 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [approvals, setApprovals] = useState<Record<string, any[]>>({})
   const [approvedByAll, setApprovedByAll] = useState<Record<string, boolean>>({})
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
 
   // Realtime subscription
@@ -181,15 +184,18 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
 
   const handleShare = () => {
     if (!inviteCode) return
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
     const link = generateHolidayInviteLink(inviteCode, botUsername)
     
     if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
       window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(group.name)}`)
     } else {
       navigator.clipboard.writeText(link)
-      showToast.success('Link copied to clipboard')
+      showToast.success(lang === 'ru' ? 'Ссылка скопирована' : 'Link copied to clipboard')
     }
+  }
+
+  const handleShowInvite = () => {
+    setShowInviteModal(true)
   }
 
   const dishesByCategory = dishes.reduce((acc, dish) => {
@@ -219,20 +225,33 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-2">
-          <Button variant="ghost" onClick={onBack}>← Back</Button>
-          <div className="flex items-center gap-2">
-            {isRealtimeConnected && (
-              <span className="text-green-500 text-xs">●</span>
-            )}
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" />
-              {t.shareLink || 'Share'}
-            </Button>
+    <>
+      <HolidayInviteModal
+        isOpen={showInviteModal}
+        inviteCode={inviteCode}
+        groupName={group.name}
+        botUsername={botUsername}
+        onClose={() => setShowInviteModal(false)}
+      />
+
+      <div className="flex flex-col h-screen bg-background">
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between mb-2">
+            <Button variant="ghost" onClick={onBack}>← Back</Button>
+            <div className="flex items-center gap-2">
+              {isRealtimeConnected && (
+                <span className="text-green-500 text-xs">●</span>
+              )}
+              <Button variant="outline" size="sm" onClick={handleShowInvite}>
+                <Share2 className="w-4 h-4 mr-2" />
+                {lang === 'ru' ? 'Код приглашения' : 'Invite Code'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleShare}>
+                <Share2 className="w-4 h-4 mr-2" />
+                {t.shareLink || 'Share'}
+              </Button>
+            </div>
           </div>
-        </div>
         <h1 className="text-2xl font-bold">{group.name}</h1>
         {group.holiday_type && (
           <p className="text-sm text-muted-foreground mt-1">{group.holiday_type}</p>
@@ -313,6 +332,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         )}
       </div>
     </div>
+    </>
   )
 }
 
