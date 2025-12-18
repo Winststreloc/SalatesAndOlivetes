@@ -359,6 +359,7 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
       .map(ing => ing.holiday_dishes?.[0]?.holiday_group_id)
       .filter((id): id is string => Boolean(id))
   )]
+  if (groupIds.length === 0) return
   
   const { data: members } = await supabase
     .from('holiday_members')
@@ -367,14 +368,8 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
     .in('holiday_group_id', groupIds)
 
   if (!members || members.length === 0) {
-    const error = new Error('You are not a member of these holiday groups')
-    handleError(error, createErrorContext('toggleHolidayIngredientsPurchased', {
-      type: 'AUTH_ERROR',
-      userId: String(user.telegram_id),
-      metadata: { ingredientIds },
-      showToast: true,
-    }))
-    throw error
+    // Нет доступных групп — просто выходим, не падая на UI
+    return
   }
 
   const memberGroupIds = new Set(members.map(m => m.holiday_group_id))
