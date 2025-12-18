@@ -78,9 +78,9 @@ export function generateHolidayInviteLink(inviteCode: string, botUsername?: stri
     ? window.location.origin 
     : process.env.NEXT_PUBLIC_APP_URL || ''
   
-  if (botUsername && typeof window !== 'undefined' && window.Telegram?.WebApp) {
-    // Используем Telegram WebApp deeplink
-    return `https://t.me/${botUsername}?start=holiday_${inviteCode}`
+  if (botUsername) {
+    // Используем Telegram WebApp deeplink - формат /app?startapp= открывает WebApp напрямую
+    return `https://t.me/${botUsername}/app?startapp=holiday_${inviteCode}`
   }
   
   return `${baseUrl}/holiday?code=${inviteCode}`
