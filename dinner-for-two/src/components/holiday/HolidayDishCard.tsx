@@ -38,12 +38,12 @@ export function HolidayDishCard({
   return (
     <Card className={isApprovedByAll ? 'border-green-500' : ''}>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-lg">{dish.name}</h3>
+              <h3 className="font-semibold text-lg break-words">{dish.name}</h3>
               {isApprovedByAll && (
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
               )}
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
@@ -52,10 +52,10 @@ export function HolidayDishCard({
               </span>
             </div>
             {dish.recipe && (
-              <p className="text-sm text-muted-foreground line-clamp-2">{dish.recipe}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2 break-words">{dish.recipe}</p>
             )}
           </div>
-          <div className="flex flex-col gap-2 ml-4">
+          <div className="flex flex-col gap-2 flex-shrink-0">
             {onView && (
               <Button size="sm" variant="secondary" onClick={onView}>
                 {lang === 'ru' ? 'Подробнее' : 'Details'}
