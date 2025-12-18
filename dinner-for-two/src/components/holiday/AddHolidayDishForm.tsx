@@ -20,7 +20,7 @@ const CATEGORY_LABELS: Record<HolidayDishCategory, { en: string; ru: string }> =
 
 interface AddHolidayDishFormProps {
   category: HolidayDishCategory | null
-  onAdd: (name: string, category: HolidayDishCategory) => void
+  onAdd: (name: string, category: HolidayDishCategory, asProduct: boolean) => void
   onCancel: () => void
 }
 
@@ -28,12 +28,14 @@ export function AddHolidayDishForm({ category, onAdd, onCancel }: AddHolidayDish
   const { lang } = useLang()
   const [name, setName] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<HolidayDishCategory | null>(category)
+  const [asProduct, setAsProduct] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !selectedCategory) return
-    onAdd(name.trim(), selectedCategory)
+    onAdd(name.trim(), selectedCategory, asProduct)
     setName('')
+    setAsProduct(false)
   }
 
   return (
@@ -76,6 +78,19 @@ export function AddHolidayDishForm({ category, onAdd, onCancel }: AddHolidayDish
             <Button type="button" variant="outline" onClick={onCancel}>
               {lang === 'ru' ? 'Отмена' : 'Cancel'}
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              id="as-product"
+              type="checkbox"
+              checked={asProduct}
+              onChange={(e) => setAsProduct(e.target.checked)}
+            />
+            <Label htmlFor="as-product">
+              {lang === 'ru'
+                ? 'Считать товаром (без ингредиентов, сразу в покупки)'
+                : 'Treat as product (no ingredients, add to shopping)'}
+            </Label>
           </div>
         </form>
       </CardContent>

@@ -127,7 +127,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
     }
   }, [loadData])
 
-  const handleAddDish = async (name: string, category: HolidayDishCategory) => {
+  const handleAddDish = async (name: string, category: HolidayDishCategory, asProduct: boolean) => {
     try {
       const dish = await addHolidayDish(group.id, name, category)
       if (isMountedRef.current) {
@@ -139,6 +139,15 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         const dishApprovals = await getHolidayDishApprovals(dish.id)
         setApprovals(prev => ({ ...prev, [dish.id]: dishApprovals }))
         setApprovedByAll(prev => ({ ...prev, [dish.id]: false }))
+        // Если отметили как товар — сразу добавим в покупки
+        if (asProduct) {
+          try {
+            await addHolidayDishIngredient(dish.id, dish.name, '', '')
+            await loadData()
+          } catch (e) {
+            console.error('Failed to mark product dish', e)
+          }
+        }
       }
     } catch (error) {
       // Более мягкое сообщение, если ошибка пришла с сервера
@@ -331,19 +340,26 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                       </Button>
                     </div>
                     {dishesByCategory[category]?.length > 0 ? (
-                      dishesByCategory[category].map(dish => (
-                        <HolidayDishCard
-                          key={dish.id}
-                          dish={dish}
-                          approvals={approvals[dish.id] || []}
-                          isApprovedByAll={approvedByAll[dish.id] || false}
-                          membersCount={members.length}
-                          onApprove={() => handleApprove(dish.id)}
-                          onRemoveApproval={() => handleRemoveApproval(dish.id)}
-                          onDelete={() => handleDeleteDish(dish.id)}
-                          onShowIngredients={() => setIngredientEditorDish(dish)}
-                        />
-                      ))
+                      dishesByCategory[category].map(dish => {
+                        const isProductDish =
+                          dish.category === 'alcohol' ||
+                          dish.category === 'drinks' ||
+                          (dish.holiday_dish_ingredients?.length === 1 &&
+                            dish.holiday_dish_ingredients[0].name.toLowerCase() === dish.name.toLowerCase())
+                        return (
+                          <HolidayDishCard
+                            key={dish.id}
+                            dish={dish}
+                            approvals={approvals[dish.id] || []}
+                            isApprovedByAll={approvedByAll[dish.id] || false}
+                            membersCount={members.length}
+                            onApprove={() => handleApprove(dish.id)}
+                            onRemoveApproval={() => handleRemoveApproval(dish.id)}
+                            onDelete={() => handleDeleteDish(dish.id)}
+                            onShowIngredients={isProductDish ? undefined : () => setIngredientEditorDish(dish)}
+                          />
+                        )
+                      })
                     ) : (
                       <Card>
                         <CardContent className="p-6 text-center text-muted-foreground">
