@@ -5,5 +5,9 @@ export * from './couples'
 export * from './ai'
 export * from './weeklyPlans'
 export * from './auth'
+export * from './holidayGroups'
+export * from './holidayDishes'
+export * from './holidayApprovals'
+export { generateHolidayIdeas } from './ai'
 
 

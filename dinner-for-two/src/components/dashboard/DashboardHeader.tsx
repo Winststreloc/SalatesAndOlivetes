@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Key, Settings, LogOut, Wifi, WifiOff } from 'lucide-react'
+import { Key, Settings, LogOut, Wifi, WifiOff, Calendar } from 'lucide-react'
 import { useLang } from '../LanguageProvider'
 import { useAuth } from '../AuthProvider'
 import { ConfirmDialog } from '../ConfirmDialog'
@@ -12,13 +12,15 @@ interface DashboardHeaderProps {
   onShowInvite: () => void
   onShowSettings: () => void
   onLogout: () => void
+  onShowHolidayGroups?: () => void
 }
 
 export function DashboardHeader({ 
   isRealtimeConnected, 
   onShowInvite, 
   onShowSettings,
-  onLogout 
+  onLogout,
+  onShowHolidayGroups
 }: DashboardHeaderProps) {
   const { t } = useLang()
   const { logout } = useAuth()
@@ -59,6 +61,11 @@ export function DashboardHeader({
           )}
         </div>
         <div className="flex items-center space-x-1">
+          {onShowHolidayGroups && (
+            <Button variant="ghost" size="icon" onClick={onShowHolidayGroups} title="Holiday Groups">
+              <Calendar className="h-4 w-4" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={onShowSettings}>
             <Settings className="h-4 w-4" />
           </Button>

@@ -19,7 +19,7 @@ declare global {
 }
 
 interface User {
-  id: number
+  id: number // This is the telegram_id
   first_name: string
   username?: string
 }

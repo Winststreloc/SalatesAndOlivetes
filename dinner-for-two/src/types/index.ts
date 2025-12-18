@@ -120,4 +120,68 @@ export interface RealtimePayload<T> {
 // Drag and Drop types - re-export from @hello-pangea/dnd for convenience
 export type { DropResult as DragResult, DroppableProvided, DraggableProvided } from '@hello-pangea/dnd'
 
+// Holiday Groups types
+export type HolidayDishCategory = 'cold_appetizers' | 'hot_dishes' | 'salads' | 'alcohol' | 'desserts' | 'drinks' | 'other'
+
+export interface HolidayGroup {
+  id: string
+  name: string
+  holiday_type?: string | null
+  invite_code: string
+  created_by: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface HolidayMember {
+  id: string
+  holiday_group_id: string
+  telegram_id: number
+  joined_at?: string
+  users?: {
+    telegram_id: number
+    first_name?: string
+    username?: string
+    photo_url?: string
+  }
+}
+
+export interface HolidayDish {
+  id: string
+  holiday_group_id: string
+  name: string
+  category: HolidayDishCategory
+  created_by: number
+  recipe?: string | null
+  calories?: number | null
+  proteins?: number | null
+  fats?: number | null
+  carbs?: number | null
+  created_at?: string
+  updated_at?: string
+  holiday_dish_ingredients?: HolidayDishIngredient[]
+}
+
+export interface HolidayDishIngredient {
+  id: string
+  holiday_dish_id: string
+  name: string
+  amount?: string | null
+  unit?: string | null
+  is_purchased: boolean
+  created_at?: string
+}
+
+export interface HolidayDishApproval {
+  id: string
+  holiday_dish_id: string
+  telegram_id: number
+  approved_at?: string
+  users?: {
+    telegram_id: number
+    first_name?: string
+    username?: string
+  }
+}
+
 

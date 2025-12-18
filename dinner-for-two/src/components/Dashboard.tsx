@@ -25,12 +25,16 @@ import { showToast } from '@/utils/toast'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 import { logger } from '@/utils/logger'
 import { getWeekDates } from '@/utils/dateUtils'
-import { Dish, ShoppingListItem, ManualIngredient, RealtimePayload, Ingredient } from '@/types'
+import { Dish, ShoppingListItem, ManualIngredient, RealtimePayload, Ingredient, HolidayGroup } from '@/types'
+import { HolidayGroupsList } from './holiday/HolidayGroupsList'
+import { HolidayGroupView } from './holiday/HolidayGroupView'
 
 export function Dashboard() {
   const { t, lang } = useLang()
   const { coupleId, logout, user } = useAuth()
   const [tab, setTab] = useState<TabType>('plan')
+  const [showHolidayGroups, setShowHolidayGroups] = useState(false)
+  const [selectedHolidayGroup, setSelectedHolidayGroup] = useState<HolidayGroup | null>(null)
   const [showInvite, setShowInvite] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [addingDay, setAddingDay] = useState<string | null>(null)
@@ -464,6 +468,24 @@ export function Dashboard() {
     }
   }, [])
 
+  // Если показываем holiday группы, рендерим их вместо обычного Dashboard
+  if (showHolidayGroups) {
+    if (selectedHolidayGroup) {
+      return (
+        <HolidayGroupView
+          group={selectedHolidayGroup}
+          onBack={() => setSelectedHolidayGroup(null)}
+        />
+      )
+    }
+    return (
+      <HolidayGroupsList
+        onSelectGroup={(group) => setSelectedHolidayGroup(group)}
+        onCreateGroup={() => {}}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background relative">
       <DashboardHeader
@@ -471,6 +493,7 @@ export function Dashboard() {
         onShowInvite={() => setShowInvite(true)}
         onShowSettings={() => setShowSettings(true)}
         onLogout={() => {}}
+        onShowHolidayGroups={() => setShowHolidayGroups(true)}
       />
 
       <InviteModal

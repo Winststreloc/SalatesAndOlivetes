@@ -347,4 +347,52 @@ Return ONLY valid JSON, no other text.`
     }
 }
 
+export async function generateHolidayIdeas(holidayType: string | null | undefined, lang: 'en' | 'ru' = 'ru') {
+    const user = await getUserFromSession()
+    if (!user) {
+      console.error('generateHolidayIdeas: No user session')
+      return []
+    }
+    
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-robotics-er-1.5-preview' })
+        
+        const holidayContext = holidayType 
+          ? `Holiday type: ${holidayType}. This is a ${holidayType} celebration.`
+          : 'This is a holiday celebration.'
+        
+        const prompt = `You are a creative chef planning a holiday menu. Suggest 6-8 distinct dish ideas suitable for a holiday celebration.
+Return ONLY a JSON object with a key 'ideas' containing an array of strings (dish names).
+Language of output: ${lang === 'ru' ? 'Russian' : 'English'}.
+
+${holidayContext}
+
+Guidelines:
+1. Suggest dishes appropriate for the holiday type (${holidayType || 'general holiday'}).
+2. Include variety: cold appetizers, hot dishes, salads, desserts, drinks, etc.
+3. Make dishes festive and suitable for a group celebration.
+4. Use authentic, traditional names when appropriate.
+5. Suggest COMPLETE dish names.
+
+Return ONLY valid JSON, no other text.`
+
+        const result = await model.generateContent(prompt)
+        const response = await result.response
+        const content = response.text()
+        
+        let jsonContent = content.trim()
+        if (jsonContent.startsWith('```json')) {
+          jsonContent = jsonContent.replace(/^```json\n?/, '').replace(/\n?```$/, '')
+        } else if (jsonContent.startsWith('```')) {
+          jsonContent = jsonContent.replace(/^```\n?/, '').replace(/\n?```$/, '')
+        }
+        
+        const parsed = JSON.parse(jsonContent || '{}')
+        return Array.isArray(parsed.ideas) ? parsed.ideas : []
+    } catch (e) {
+        console.error(e)
+        return []
+    }
+}
+
 

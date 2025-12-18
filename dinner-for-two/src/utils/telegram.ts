@@ -61,3 +61,28 @@ export function validateTelegramWebAppData(telegramInitData: string): { validate
   }
 }
 
+export function parseHolidayInviteLink(url: string): string | null {
+  try {
+    const urlObj = new URL(url)
+    // Поддерживаем форматы: /holiday?code=xxx или /holiday/xxx
+    const code = urlObj.searchParams.get('code') || urlObj.pathname.split('/').pop()
+    return code || null
+  } catch (e) {
+    console.error('Error parsing holiday invite link', e)
+    return null
+  }
+}
+
+export function generateHolidayInviteLink(inviteCode: string, botUsername?: string): string {
+  const baseUrl = typeof window !== 'undefined' 
+    ? window.location.origin 
+    : process.env.NEXT_PUBLIC_APP_URL || ''
+  
+  if (botUsername && typeof window !== 'undefined' && window.Telegram?.WebApp) {
+    // Используем Telegram WebApp deeplink
+    return `https://t.me/${botUsername}?start=holiday_${inviteCode}`
+  }
+  
+  return `${baseUrl}/holiday?code=${inviteCode}`
+}
+
