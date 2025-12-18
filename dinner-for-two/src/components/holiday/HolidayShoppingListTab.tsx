@@ -38,7 +38,7 @@ export function HolidayShoppingListTab({ dishes, approvedByAll, onUpdated }: Hol
 
     approvedDishes.forEach(dish => {
       dish.holiday_dish_ingredients?.forEach((ing: HolidayDishIngredient) => {
-        const key = `${ing.name.toLowerCase()}_${ing.unit || ''}`
+        const key = `${ing.name.trim().toLowerCase()}_${(ing.unit || '').trim().toLowerCase()}`
         const existing = ingredientMap.get(key)
 
         if (existing) {
