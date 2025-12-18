@@ -19,7 +19,7 @@ import {
   addHolidayDishIngredient
 } from '@/app/actions'
 import { toggleHolidayIngredientsPurchased } from '@/app/actions/holidayIngredients'
-import { HolidayGroup, HolidayDish, HolidayDishCategory, RealtimePayload } from '@/types'
+import { HolidayGroup, HolidayDish, HolidayDishCategory, RealtimePayload, HolidayDishApproval, HolidayDishIngredient } from '@/types'
 import { generateHolidayInviteLink } from '@/utils/telegram'
 import { showToast } from '@/utils/toast'
 import { Users, Share2, Plus, Menu, ShoppingCart, CheckCircle2 } from 'lucide-react'
@@ -64,26 +64,77 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
 
-  // Realtime subscription
+  // Realtime subscription с точечными обновлениями
   const { isConnected: isRealtimeConnected } = useHolidayRealtime(group.id, {
     onDishes: (payload: RealtimePayload<HolidayDish>) => {
-      if (payload.eventType === 'INSERT') {
-        loadData()
-      } else if (payload.eventType === 'UPDATE') {
-        loadData()
-      } else if (payload.eventType === 'DELETE') {
-        if (isMountedRef.current) {
-          setDishes(prev => prev.filter(d => d.id !== payload.old.id))
-        }
+      if (!isMountedRef.current) return
+      if (payload.eventType === 'INSERT' && payload.new) {
+        setDishes(prev => {
+          if (prev.some(d => d.id === payload.new.id)) return prev
+          return [payload.new as HolidayDish, ...prev]
+        })
+      } else if (payload.eventType === 'UPDATE' && payload.new) {
+        setDishes(prev => prev.map(d => d.id === payload.new?.id ? { ...d, ...payload.new } : d))
+      } else if (payload.eventType === 'DELETE' && payload.old) {
+        setDishes(prev => prev.filter(d => d.id !== payload.old.id))
+        setApprovals(prev => {
+          const copy = { ...prev }
+          delete copy[payload.old.id]
+          return copy
+        })
+        setApprovedByAll(prev => {
+          const copy = { ...prev }
+          delete copy[payload.old.id]
+          return copy
+        })
       }
     },
-    onApprovals: () => {
-      // Перезагрузить апрувы при изменении
-      loadData()
+    onApprovals: (payload: RealtimePayload<HolidayDishApproval>) => {
+      if (!isMountedRef.current) return
+      const dishId = payload.new?.holiday_dish_id || payload.old?.holiday_dish_id
+      if (!dishId) return
+      setApprovals(prev => {
+        let nextList = prev[dishId] || []
+        if (payload.eventType === 'INSERT' && payload.new) {
+          nextList = [...nextList, payload.new]
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          nextList = nextList.filter(a => a.id !== payload.old?.id)
+        } else {
+          return prev
+        }
+        const next = { ...prev, [dishId]: nextList }
+        setApprovedByAll(cur => ({
+          ...cur,
+          [dishId]: members.length > 0 && nextList.length >= members.length
+        }))
+        return next
+      })
     },
-    onIngredients: () => {
-      // Перезагрузить данные при изменении ингредиентов
-      loadData()
+    onIngredients: (payload: RealtimePayload<HolidayDishIngredient>) => {
+      if (!isMountedRef.current) return
+      const dishId = payload.new?.holiday_dish_id || payload.old?.holiday_dish_id
+      if (!dishId) return
+      setDishes(prev => prev.map(d => {
+        if (d.id !== dishId) return d
+        const list = d.holiday_dish_ingredients || []
+        if (payload.eventType === 'INSERT' && payload.new) {
+          if (list.some(i => i.id === payload.new?.id)) return d
+          return { ...d, holiday_dish_ingredients: [...list, payload.new] }
+        }
+        if (payload.eventType === 'UPDATE' && payload.new) {
+          return {
+            ...d,
+            holiday_dish_ingredients: list.map(i => i.id === payload.new?.id ? { ...i, ...payload.new } : i)
+          }
+        }
+        if (payload.eventType === 'DELETE' && payload.old) {
+          return {
+            ...d,
+            holiday_dish_ingredients: list.filter(i => i.id !== payload.old?.id)
+          }
+        }
+        return d
+      }))
     }
   })
 
@@ -133,27 +184,40 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const handleAddDish = async (name: string, category: HolidayDishCategory, asProduct: boolean) => {
     try {
       const dish = await addHolidayDish(group.id, name, category)
-      if (isMountedRef.current) {
-        setDishes(prev => [...prev, dish as HolidayDish])
-        setShowAddForm(false)
-        setSelectedCategory(null)
-        showToast.success(t.addSuccess || 'Dish added successfully')
-        // Загрузить апрувы для нового блюда
-        const dishApprovals = await getHolidayDishApprovals(dish.id)
-        setApprovals(prev => ({ ...prev, [dish.id]: dishApprovals }))
-        setApprovedByAll(prev => ({ ...prev, [dish.id]: false }))
-        // Если отметили как товар — сразу добавим в покупки
-        if (asProduct) {
-          try {
-            await addHolidayDishIngredient(dish.id, dish.name, '', '')
-            await loadData()
-          } catch (e) {
-            console.error('Failed to mark product dish', e)
-          }
+      if (!isMountedRef.current) return
+
+      // Локально добавляем новое блюдо
+      setDishes(prev => [...prev, dish as HolidayDish])
+      setShowAddForm(false)
+      setSelectedCategory(null)
+      showToast.success(t.addSuccess || 'Dish added successfully')
+
+      // Подтягиваем апрувы только для нового блюда
+      const dishApprovals = await getHolidayDishApprovals(dish.id)
+      setApprovals(prev => ({ ...prev, [dish.id]: dishApprovals }))
+      setApprovedByAll(prev => ({ ...prev, [dish.id]: false }))
+
+      // Если отметили как товар — сразу добавим в покупки, без полной перезагрузки
+      if (asProduct) {
+        try {
+          await addHolidayDishIngredient(dish.id, dish.name, '', '')
+          // локально добавляем ингредиент-продукт
+          setDishes(prev => prev.map(d =>
+            d.id === dish.id
+              ? {
+                  ...d,
+                  holiday_dish_ingredients: [
+                    ...(d.holiday_dish_ingredients || []),
+                    { id: crypto.randomUUID(), holiday_dish_id: dish.id, name: dish.name, amount: '', unit: '', is_purchased: false },
+                  ]
+                }
+              : d
+          ))
+        } catch (e) {
+          console.error('Failed to mark product dish', e)
         }
       }
     } catch (error) {
-      // Более мягкое сообщение, если ошибка пришла с сервера
       const message = error instanceof Error ? error.message : 'Failed to add dish'
       showToast.error(message)
     }
