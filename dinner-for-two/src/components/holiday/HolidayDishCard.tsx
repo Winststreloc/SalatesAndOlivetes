@@ -15,6 +15,7 @@ interface HolidayDishCardProps {
   onApprove: () => void
   onRemoveApproval: () => void
   onDelete: () => void
+  onView?: () => void
   onShowIngredients?: () => void
 }
 
@@ -26,6 +27,7 @@ export function HolidayDishCard({
   onApprove,
   onRemoveApproval,
   onDelete,
+  onView,
   onShowIngredients
 }: HolidayDishCardProps) {
   const { t, lang } = useLang()
@@ -54,6 +56,11 @@ export function HolidayDishCard({
             )}
           </div>
           <div className="flex flex-col gap-2 ml-4">
+            {onView && (
+              <Button size="sm" variant="secondary" onClick={onView}>
+                {lang === 'ru' ? 'Подробнее' : 'Details'}
+              </Button>
+            )}
             {onShowIngredients && (
               <Button size="sm" variant="outline" onClick={onShowIngredients}>
                 {lang === 'ru' ? 'Ингредиенты' : 'Ingredients'}

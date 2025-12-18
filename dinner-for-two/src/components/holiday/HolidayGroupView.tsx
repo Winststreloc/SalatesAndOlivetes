@@ -29,6 +29,7 @@ import { HolidayInviteModal } from './HolidayInviteModal'
 import { HolidayApprovedDishesTab } from './HolidayApprovedDishesTab'
 import { HolidayShoppingListTab } from './HolidayShoppingListTab'
 import { HolidayIngredientEditor } from './HolidayIngredientEditor'
+import { HolidayDishModal } from './HolidayDishModal'
 
 const CATEGORY_LABELS: Record<HolidayDishCategory, { en: string; ru: string }> = {
   cold_appetizers: { en: 'Cold Appetizers', ru: 'Холодные закуски' },
@@ -58,6 +59,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'menu' | 'approved' | 'shopping'>('menu')
   const [ingredientEditorDish, setIngredientEditorDish] = useState<HolidayDish | null>(null)
+  const [viewDish, setViewDish] = useState<HolidayDish | null>(null)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
 
@@ -356,7 +358,8 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                             onApprove={() => handleApprove(dish.id)}
                             onRemoveApproval={() => handleRemoveApproval(dish.id)}
                             onDelete={() => handleDeleteDish(dish.id)}
-                            onShowIngredients={isProductDish ? undefined : () => setIngredientEditorDish(dish)}
+                        onView={() => setViewDish(dish)}
+                        onShowIngredients={isProductDish ? undefined : () => setIngredientEditorDish(dish)}
                           />
                         )
                       })
@@ -381,6 +384,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                   onRemoveApproval={handleRemoveApproval}
                   onDelete={handleDeleteDish}
                   onShowIngredients={(dish: HolidayDish) => setIngredientEditorDish(dish)}
+                  onView={(dish: HolidayDish) => setViewDish(dish)}
                 />
               </TabsContent>
 
@@ -400,6 +404,19 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         isOpen={!!ingredientEditorDish}
         onClose={() => setIngredientEditorDish(null)}
         onUpdated={loadData}
+      />
+      <HolidayDishModal
+        dish={viewDish}
+        isOpen={!!viewDish}
+        onClose={() => setViewDish(null)}
+        onEditIngredients={
+          viewDish && viewDish.holiday_dish_ingredients?.length
+            ? () => {
+                setIngredientEditorDish(viewDish)
+                setViewDish(null)
+              }
+            : undefined
+        }
       />
     </>
   )

@@ -16,6 +16,7 @@ interface HolidayApprovedDishesTabProps {
   onRemoveApproval: (dishId: string) => void
   onDelete: (dishId: string) => void
   onShowIngredients?: (dish: HolidayDish) => void
+  onView?: (dish: HolidayDish) => void
 }
 
 export function HolidayApprovedDishesTab({
@@ -26,7 +27,8 @@ export function HolidayApprovedDishesTab({
   onApprove,
   onRemoveApproval,
   onDelete,
-  onShowIngredients
+  onShowIngredients,
+  onView
 }: HolidayApprovedDishesTabProps) {
   const { t, lang } = useLang()
 
@@ -66,6 +68,7 @@ export function HolidayApprovedDishesTab({
           onRemoveApproval={() => onRemoveApproval(dish.id)}
           onDelete={() => onDelete(dish.id)}
           onShowIngredients={onShowIngredients ? () => onShowIngredients(dish) : undefined}
+          onView={onView ? () => onView(dish) : undefined}
         />
       ))}
     </div>
