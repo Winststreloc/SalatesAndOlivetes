@@ -14,6 +14,7 @@ import { Download, Share2 } from 'lucide-react'
 interface HolidayShoppingListTabProps {
   dishes: HolidayDish[]
   approvedByAll: Record<string, boolean>
+  onUpdated?: () => void | Promise<void>
 }
 
 interface ShoppingListItem {
@@ -26,7 +27,7 @@ interface ShoppingListItem {
   dishNames: string[]
 }
 
-export function HolidayShoppingListTab({ dishes, approvedByAll }: HolidayShoppingListTabProps) {
+export function HolidayShoppingListTab({ dishes, approvedByAll, onUpdated }: HolidayShoppingListTabProps) {
   const { t, lang } = useLang()
   const [showPurchased, setShowPurchased] = useState(false)
 
@@ -117,7 +118,8 @@ export function HolidayShoppingListTab({ dishes, approvedByAll }: HolidayShoppin
       const newStatus = !item.is_purchased
       await toggleHolidayIngredientsPurchased(item.ids, newStatus)
       showToast.success(lang === 'ru' ? 'Обновлено' : 'Updated')
-      // Перезагрузить данные будет через realtime
+      // Обновим данные сразу, чтобы чекбокс отразился
+      if (onUpdated) await onUpdated()
     } catch (error) {
       showToast.error(error instanceof Error ? error.message : 'Failed to update')
     }

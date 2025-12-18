@@ -392,6 +392,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                 <HolidayShoppingListTab
                   dishes={dishes}
                   approvedByAll={approvedByAll}
+                  onUpdated={loadData}
                 />
               </TabsContent>
             </Tabs>
