@@ -38,10 +38,22 @@ export async function toggleHolidayIngredientPurchased(ingredientId: string, isP
   }
 
   // Проверить, является ли пользователь участником группы
+  const holidayGroupId = ingredient.holiday_dishes?.[0]?.holiday_group_id
+  if (!holidayGroupId) {
+    const error = new Error('Ingredient does not belong to a holiday group')
+    handleError(error, createErrorContext('toggleHolidayIngredientPurchased', {
+      type: 'VALIDATION_ERROR',
+      userId: String(user.telegram_id),
+      metadata: { ingredientId },
+      showToast: true,
+    }))
+    throw error
+  }
+
   const { data: member } = await supabase
     .from('holiday_members')
     .select('id')
-    .eq('holiday_group_id', ingredient.holiday_dishes.holiday_group_id)
+    .eq('holiday_group_id', holidayGroupId)
     .eq('telegram_id', user.telegram_id)
     .single()
 

@@ -28,6 +28,7 @@ import { getWeekDates } from '@/utils/dateUtils'
 import { Dish, ShoppingListItem, ManualIngredient, RealtimePayload, Ingredient, HolidayGroup } from '@/types'
 import { HolidayGroupsList } from './holiday/HolidayGroupsList'
 import { HolidayGroupView } from './holiday/HolidayGroupView'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
 export function Dashboard() {
   const { t, lang } = useLang()
@@ -467,6 +468,22 @@ export function Dashboard() {
       setDishes(prev => prev.filter(d => d.id !== dishId))
     }
   }, [])
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('holiday') === 'groups') {
+      setShowHolidayGroups(true)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (!showHolidayGroups && searchParams.get('holiday')) {
+      router.replace(pathname)
+    }
+  }, [showHolidayGroups, searchParams, router, pathname])
 
   // Если показываем holiday группы, рендерим их вместо обычного Dashboard
   if (showHolidayGroups) {

@@ -30,6 +30,7 @@ export default function Home() {
             try {
               await joinHolidayGroup(inviteCode)
               showToast.success(lang === 'ru' ? 'Вы присоединились к группе праздника' : 'Joined holiday group')
+              window.location.href = `${window.location.pathname}?holiday=groups`
             } catch (error) {
               showToast.error(error instanceof Error ? error.message : 'Failed to join group')
             } finally {
@@ -49,6 +50,7 @@ export default function Home() {
           showToast.success(lang === 'ru' ? 'Вы присоединились к группе праздника' : 'Joined holiday group')
           // Очистить URL
           window.history.replaceState({}, '', window.location.pathname)
+          window.location.href = `${window.location.pathname}?holiday=groups`
         } catch (error) {
           showToast.error(error instanceof Error ? error.message : 'Failed to join group')
         } finally {
