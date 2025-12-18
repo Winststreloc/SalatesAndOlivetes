@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { useLang } from '@/components/LanguageProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { joinHolidayGroup } from '@/app/actions'
 import { parseHolidayInviteLink } from '@/utils/telegram'
 import { showToast } from '@/utils/toast'
@@ -14,6 +15,7 @@ export default function Home() {
   const { user, coupleId, isLoading } = useAuth()
   const { t, lang } = useLang()
   const [processingInvite, setProcessingInvite] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     // Обработка deeplink для holiday групп
@@ -25,12 +27,14 @@ export default function Home() {
         const startParam = window.Telegram.WebApp.initDataUnsafe.start_param
         if (startParam.startsWith('holiday_')) {
           const inviteCode = startParam.replace('holiday_', '')
-          if (inviteCode && !processingInvite) {
+          const handledKey = `holiday_invite_${inviteCode}`
+          if (inviteCode && !processingInvite && !sessionStorage.getItem(handledKey)) {
             setProcessingInvite(true)
             try {
               await joinHolidayGroup(inviteCode)
+              sessionStorage.setItem(handledKey, '1')
               showToast.success(lang === 'ru' ? 'Вы присоединились к группе праздника' : 'Joined holiday group')
-              window.location.href = `${window.location.pathname}?holiday=groups`
+              router.replace(`${window.location.pathname}?holiday=groups`)
             } catch (error) {
               showToast.error(error instanceof Error ? error.message : 'Failed to join group')
             } finally {
@@ -44,13 +48,15 @@ export default function Home() {
       const urlParams = new URLSearchParams(window.location.search)
       const code = urlParams.get('code')
       if (code && !processingInvite) {
+        const handledKey = `holiday_invite_${code}`
+        if (sessionStorage.getItem(handledKey)) return
         setProcessingInvite(true)
         try {
           await joinHolidayGroup(code)
+          sessionStorage.setItem(handledKey, '1')
           showToast.success(lang === 'ru' ? 'Вы присоединились к группе праздника' : 'Joined holiday group')
-          // Очистить URL
-          window.history.replaceState({}, '', window.location.pathname)
-          window.location.href = `${window.location.pathname}?holiday=groups`
+          // Очистить URL и перейти в группы
+          router.replace(`${window.location.pathname}?holiday=groups`)
         } catch (error) {
           showToast.error(error instanceof Error ? error.message : 'Failed to join group')
         } finally {
@@ -60,7 +66,7 @@ export default function Home() {
     }
 
     handleStartParam()
-  }, [user, coupleId, processingInvite, lang])
+  }, [user, coupleId, processingInvite, lang, router])
 
   if (isLoading) {
     return (
