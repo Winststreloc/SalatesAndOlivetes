@@ -21,7 +21,8 @@ interface HolidayIngredientEditorProps {
 export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIngredientsChange }: HolidayIngredientEditorProps) {
   const { lang } = useLang()
   const [ingredients, setIngredients] = useState<HolidayDishIngredient[]>([])
-  const [isSaving, setIsSaving] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
   const [isGenerating, setIsGenerating] = useState(false)
   const [newIngredient, setNewIngredient] = useState({ name: '', amount: '', unit: '' })
 
@@ -33,7 +34,7 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
 
   const handleAdd = async () => {
     if (!newIngredient.name.trim()) return
-    setIsSaving(true)
+    setAdding(true)
     try {
       await addHolidayDishIngredient(dish.id, newIngredient.name.trim(), newIngredient.amount, newIngredient.unit)
       setNewIngredient({ name: '', amount: '', unit: '' })
@@ -42,12 +43,12 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
     } catch (e) {
       showToast.error(e instanceof Error ? e.message : 'Failed to add ingredient')
     } finally {
-      setIsSaving(false)
+      setAdding(false)
     }
   }
 
   const handleUpdate = async (ing: HolidayDishIngredient) => {
-    setIsSaving(true)
+    setSavingIds(prev => new Set(prev).add(ing.id))
     try {
       await updateHolidayDishIngredient(ing.id, ing.name, ing.amount || '', ing.unit || '')
       await onUpdated()
@@ -55,7 +56,11 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
     } catch (e) {
       showToast.error(e instanceof Error ? e.message : 'Failed to save')
     } finally {
-      setIsSaving(false)
+      setSavingIds(prev => {
+        const next = new Set(prev)
+        next.delete(ing.id)
+        return next
+      })
     }
   }
 
@@ -64,7 +69,7 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
     const next = ingredients.filter(ing => ing.id !== id)
     setIngredients(next)
     onIngredientsChange?.(dish.id, next)
-    setIsSaving(true)
+    setSavingIds(prev => new Set(prev).add(id))
     try {
       await deleteHolidayDishIngredient(id)
       await onUpdated()
@@ -75,7 +80,11 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
       onIngredientsChange?.(dish.id, prev)
       showToast.error(e instanceof Error ? e.message : 'Failed to delete')
     } finally {
-      setIsSaving(false)
+      setSavingIds(prev => {
+        const nextSet = new Set(prev)
+        nextSet.delete(id)
+        return nextSet
+      })
     }
   }
 
@@ -150,11 +159,11 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
                   placeholder={lang === 'ru' ? 'Ед.' : 'Unit'}
                 />
                 <div className="col-span-12 md:col-span-2 flex gap-1 justify-end">
-                  <Button size="icon" variant="ghost" onClick={() => handleUpdate(ingredients[idx])} disabled={isSaving}>
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : '✓'}
+                  <Button size="icon" variant="ghost" onClick={() => handleUpdate(ingredients[idx])} disabled={savingIds.has(ing.id)}>
+                    {savingIds.has(ing.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : '✓'}
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDelete(ing.id)} disabled={isSaving}>
-                    <Trash2 className="w-4 h-4" />
+                  <Button size="icon" variant="ghost" onClick={() => handleDelete(ing.id)} disabled={savingIds.has(ing.id)}>
+                    {savingIds.has(ing.id) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>
@@ -182,7 +191,7 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
               onChange={(e) => setNewIngredient(prev => ({ ...prev, unit: e.target.value }))}
               placeholder={lang === 'ru' ? 'Ед.' : 'Unit'}
             />
-            <Button size="sm" className="col-span-12 md:col-span-2" onClick={handleAdd} disabled={isSaving || !newIngredient.name.trim()}>
+            <Button size="sm" className="col-span-12 md:col-span-2" onClick={handleAdd} disabled={adding || !newIngredient.name.trim()}>
               <Plus className="w-4 h-4 mr-2" />
               {lang === 'ru' ? 'Добавить' : 'Add'}
             </Button>
