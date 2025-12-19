@@ -328,7 +328,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
       if (dish && (!dish.holiday_dish_ingredients || dish.holiday_dish_ingredients.length === 0)) {
         try {
           await addHolidayDishIngredient(dish.id, dish.name, '', '')
-          await loadData()
+          await mutateDishes()
         } catch (e) {
           // не блокируем основное действие
           console.error('Failed to add dish as ingredient', e)
