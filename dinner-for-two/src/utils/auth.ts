@@ -7,6 +7,12 @@ export async function getUserFromSession() {
   
   if (!token) {
     console.log('getUserFromSession: No session token found')
+    // Dev bypass: allow working locally without Telegram session
+    if (process.env.NEXT_PUBLIC_ALLOW_LOCAL_DEV === 'true') {
+      const devTelegramId = Number(process.env.NEXT_PUBLIC_DEV_TELEGRAM_ID) || 0
+      const devCoupleId = process.env.NEXT_PUBLIC_DEV_COUPLE_ID || 'dev-couple'
+      return { telegram_id: devTelegramId, couple_id: devCoupleId }
+    }
     return null
   }
   

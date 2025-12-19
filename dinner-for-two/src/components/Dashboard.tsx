@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { getDish, getInviteCode, getManualIngredients, hasPartner, generateDishIngredients, toggleIngredientsPurchased, addManualIngredient, updateManualIngredient, deleteManualIngredient, deleteIngredient, updateIngredient, addDish, deleteDish, getCouplePreferences, updateRecipe } from '@/app/actions'
 import { useLang } from './LanguageProvider'
 import { useAuth } from './AuthProvider'
@@ -16,7 +17,6 @@ import { FloatingActionButton } from './FloatingActionButton'
 import { GlobalSearch } from './GlobalSearch'
 import { DashboardHeader } from './dashboard/DashboardHeader'
 import { DashboardTabs, TabType } from './dashboard/DashboardTabs'
-import { PlanTab } from './dashboard/PlanTab'
 import { ShoppingListTab } from './dashboard/ShoppingListTab'
 import { SettingsModal } from './dashboard/SettingsModal'
 import { InviteModal } from './dashboard/InviteModal'
@@ -27,8 +27,46 @@ import { logger } from '@/utils/logger'
 import { getWeekDates } from '@/utils/dateUtils'
 import { Dish, ShoppingListItem, ManualIngredient, RealtimePayload, Ingredient, HolidayGroup } from '@/types'
 import { HolidayGroupsList } from './holiday/HolidayGroupsList'
-import { HolidayGroupView } from './holiday/HolidayGroupView'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { Skeleton } from './ui/skeleton'
+import type { PlanTabProps } from './dashboard/PlanTab'
+
+const PlanTab = dynamic<PlanTabProps>(
+  () => import('./dashboard/PlanTab').then(m => m.PlanTab),
+  {
+    ssr: false,
+    loading: (props) => (
+      <div className="space-y-6">
+        {(props?.orderedDates && props.orderedDates.length > 0 ? props.orderedDates : [1, 2, 3]).map((key, idx) => (
+          <div key={`${key}-${idx}`} className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+            <div className="bg-muted p-3 font-semibold text-foreground flex justify-between items-center">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-6 w-6" />
+            </div>
+            <div className="p-2 space-y-2">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+)
+
+const HolidayGroupView = dynamic(
+  () => import('./holiday/HolidayGroupView').then(m => m.HolidayGroupView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-4 space-y-4">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    )
+  }
+)
 
 export function Dashboard() {
   const { t, lang } = useLang()

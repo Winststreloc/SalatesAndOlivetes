@@ -39,9 +39,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [coupleId, setCoupleId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const allowLocalDev = process.env.NEXT_PUBLIC_ALLOW_LOCAL_DEV === 'true'
+  const devUser: User = {
+    id: Number(process.env.NEXT_PUBLIC_DEV_TELEGRAM_ID) || 0,
+    first_name: 'Dev User',
+    username: 'dev',
+  }
+  const devCouple = process.env.NEXT_PUBLIC_DEV_COUPLE_ID || 'dev-couple'
 
   useEffect(() => {
     const initAuth = async () => {
+      let nextUser: User | null = null
+      let nextCouple: string | null = null
+
       // Check if running in Telegram WebApp
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         window.Telegram.WebApp.ready()
@@ -57,8 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             if (res.ok) {
               const data = await res.json()
-              setUser(data.user)
-              setCoupleId(data.couple_id)
+              nextUser = data.user
+              nextCouple = data.couple_id
             }
           } catch (e) {
             console.error('Auth check failed', e)
@@ -66,8 +76,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         console.log('Telegram WebApp not detected')
-        // For development, we might mock auth here if needed
       }
+
+      // Dev bypass: allow running UI locally without Telegram shell OR when Telegram auth failed/absent
+      if (!nextUser && allowLocalDev) {
+        nextUser = devUser
+      }
+      if (allowLocalDev && !nextCouple) {
+        nextCouple = devCouple
+      }
+
+      if (nextUser) setUser(nextUser)
+      if (nextCouple) setCoupleId(nextCouple)
       setIsLoading(false)
     }
 

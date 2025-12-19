@@ -42,7 +42,19 @@ export async function createHolidayGroup(name: string, holidayType?: string) {
     throw error
   }
 
-  const supabase = await createServerSideClient()
+  const allowLocalDev = process.env.NEXT_PUBLIC_ALLOW_LOCAL_DEV === 'true'
+  const supabase = allowLocalDev ? createServiceRoleClient() : await createServerSideClient()
+
+  // Ensure dev user exists to satisfy foreign key (local only)
+  if (allowLocalDev) {
+    await supabase
+      .from('users')
+      .upsert({
+        telegram_id: user.telegram_id,
+        first_name: 'Dev User',
+        username: 'dev'
+      }, { onConflict: 'telegram_id' })
+  }
 
   const { data: group, error: groupError } = await supabase
     .from('holiday_groups')
