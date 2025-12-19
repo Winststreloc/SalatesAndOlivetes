@@ -145,7 +145,7 @@ export async function getHolidayDishApprovals(dishId: string) {
 
   const { data: approvals } = await supabase
     .from('holiday_dish_approvals')
-    .select('*, users:telegram_id (telegram_id, first_name, username)')
+    .select('*, users:telegram_id (telegram_id, first_name, username, photo_url)')
     .eq('holiday_dish_id', dishId)
 
   return approvals || []

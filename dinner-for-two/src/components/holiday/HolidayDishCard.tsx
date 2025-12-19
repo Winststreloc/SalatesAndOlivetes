@@ -34,6 +34,10 @@ export function HolidayDishCard({
   const { user } = useAuth()
   const currentUserApproved = approvals.some(a => a.telegram_id === user?.id)
   const approvalCount = approvals.length
+  const avatars = approvals
+    .map(a => a.users)
+    .filter(Boolean)
+    .slice(0, 8) as { telegram_id: number; first_name?: string; username?: string; photo_url?: string }[]
 
   return (
     <Card className={isApprovedByAll ? 'border-green-500' : ''}>
@@ -51,6 +55,32 @@ export function HolidayDishCard({
                 {approvalCount} / {membersCount} {lang === 'ru' ? 'одобрений' : 'approvals'}
               </span>
             </div>
+            {avatars.length > 0 && (
+              <div className="flex items-center gap-2 mb-2">
+                {avatars.map(u => {
+                  const initials = (u.first_name || u.username || '?').slice(0, 1).toUpperCase()
+                  return u.photo_url ? (
+                    <div
+                      key={u.telegram_id}
+                      className="h-8 w-8 rounded-full bg-cover bg-center border border-border"
+                      style={{ backgroundImage: `url(${u.photo_url})` }}
+                      title={u.first_name || u.username || ''}
+                    />
+                  ) : (
+                    <div
+                      key={u.telegram_id}
+                      className="h-8 w-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-semibold border border-border"
+                      title={u.first_name || u.username || ''}
+                    >
+                      {initials}
+                    </div>
+                  )
+                })}
+                {approvalCount > avatars.length && (
+                  <span className="text-xs text-muted-foreground">+{approvalCount - avatars.length}</span>
+                )}
+              </div>
+            )}
             {dish.recipe && (
               <p className="text-sm text-muted-foreground line-clamp-2 break-words">{dish.recipe}</p>
             )}
