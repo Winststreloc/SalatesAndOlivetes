@@ -35,10 +35,10 @@ const PlanTab = dynamic<PlanTabProps>(
   () => import('./dashboard/PlanTab').then(m => m.PlanTab),
   {
     ssr: false,
-    loading: (props) => (
+    loading: () => (
       <div className="space-y-6">
-        {(props?.orderedDates && props.orderedDates.length > 0 ? props.orderedDates : [1, 2, 3]).map((key, idx) => (
-          <div key={`${key}-${idx}`} className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+        {[1, 2, 3].map((key) => (
+          <div key={key} className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
             <div className="bg-muted p-3 font-semibold text-foreground flex justify-between items-center">
               <Skeleton className="h-5 w-24" />
               <Skeleton className="h-6 w-6" />
