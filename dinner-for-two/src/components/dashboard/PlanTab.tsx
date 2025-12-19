@@ -15,7 +15,7 @@ import { toggleDishSelection, moveDish, deleteDish } from '@/app/actions'
 import { showToast } from '@/utils/toast'
 import { logger } from '@/utils/logger'
 
-interface PlanTabProps {
+export interface PlanTabProps {
   dishes: Dish[]
   isLoading: boolean
   orderedDates: string[]
