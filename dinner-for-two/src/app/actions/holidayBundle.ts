@@ -55,7 +55,7 @@ export async function getHolidayGroupBundle(groupId: string) {
     if (dishIds.length > 0) {
       const { data: approvals } = await supabase
         .from('holiday_dish_approvals')
-        .select('*')
+        .select('*, users:telegram_id (telegram_id, first_name, username, photo_url)')
         .in('holiday_dish_id', dishIds)
 
       const approvalsList = approvals || []
