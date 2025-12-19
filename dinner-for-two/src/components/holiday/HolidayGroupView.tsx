@@ -523,7 +523,10 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         dish={ingredientEditorDish as any}
         isOpen={!!ingredientEditorDish}
         onClose={() => setIngredientEditorDish(null)}
-        onUpdated={loadData}
+        onUpdated={() => mutateDishes()}
+        onIngredientsChange={(dishId, newIngredients) => {
+          setDishes(prev => prev.map(d => d.id === dishId ? { ...d, holiday_dish_ingredients: newIngredients } : d))
+        }}
       />
       <HolidayDishModal
         dish={viewDish}

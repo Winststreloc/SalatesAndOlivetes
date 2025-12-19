@@ -15,9 +15,10 @@ interface HolidayIngredientEditorProps {
   isOpen: boolean
   onClose: () => void
   onUpdated: () => void // callback to refresh dish data
+  onIngredientsChange?: (dishId: string, ingredients: HolidayDishIngredient[]) => void
 }
 
-export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: HolidayIngredientEditorProps) {
+export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIngredientsChange }: HolidayIngredientEditorProps) {
   const { lang } = useLang()
   const [ingredients, setIngredients] = useState<HolidayDishIngredient[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -59,12 +60,19 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated }: Ho
   }
 
   const handleDelete = async (id: string) => {
+    const prev = ingredients
+    const next = ingredients.filter(ing => ing.id !== id)
+    setIngredients(next)
+    onIngredientsChange?.(dish.id, next)
     setIsSaving(true)
     try {
       await deleteHolidayDishIngredient(id)
       await onUpdated()
       showToast.success(lang === 'ru' ? 'Удалено' : 'Deleted')
     } catch (e) {
+      // rollback on error
+      setIngredients(prev)
+      onIngredientsChange?.(dish.id, prev)
       showToast.error(e instanceof Error ? e.message : 'Failed to delete')
     } finally {
       setIsSaving(false)
