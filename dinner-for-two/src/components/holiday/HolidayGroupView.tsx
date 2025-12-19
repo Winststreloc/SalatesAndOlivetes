@@ -318,6 +318,16 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   }
 
   const handleApprove = async (dishId: string) => {
+    // оптимистичное добавление апрува
+    const prevApprovals = approvals[dishId] || []
+    const optimisticId = `optimistic-${Date.now()}`
+    const optimisticList = [...prevApprovals, { id: optimisticId, holiday_dish_id: dishId }]
+    const membersCount = members.length
+    if (isMountedRef.current) {
+      setApprovals(prev => ({ ...prev, [dishId]: optimisticList }))
+      setApprovedByAll(prev => ({ ...prev, [dishId]: membersCount > 0 && optimisticList.length >= membersCount }))
+    }
+
     try {
       await approveHolidayDish(dishId)
       const dishApprovals = await getHolidayDishApprovals(dishId)
@@ -339,11 +349,28 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         showToast.success('Dish approved')
       }
     } catch (error) {
+      if (isMountedRef.current) {
+        setApprovals(prev => ({ ...prev, [dishId]: prevApprovals }))
+        const membersCountRollback = members.length
+        setApprovedByAll(prev => ({
+          ...prev,
+          [dishId]: membersCountRollback > 0 && prevApprovals.length >= membersCountRollback
+        }))
+      }
       showToast.error(error instanceof Error ? error.message : 'Failed to approve dish')
     }
   }
 
   const handleRemoveApproval = async (dishId: string) => {
+    // оптимистичное снятие апрува
+    const prevApprovals = approvals[dishId] || []
+    const optimisticList = prevApprovals.slice(1) // убираем любой один (точное совпадение id не важно для счёта)
+    const membersCount = members.length
+    if (isMountedRef.current) {
+      setApprovals(prev => ({ ...prev, [dishId]: optimisticList }))
+      setApprovedByAll(prev => ({ ...prev, [dishId]: membersCount > 0 && optimisticList.length >= membersCount }))
+    }
+
     try {
       await removeHolidayDishApproval(dishId)
       const dishApprovals = await getHolidayDishApprovals(dishId)
@@ -354,6 +381,14 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         showToast.success('Approval removed')
       }
     } catch (error) {
+      if (isMountedRef.current) {
+        setApprovals(prev => ({ ...prev, [dishId]: prevApprovals }))
+        const membersCountRollback = members.length
+        setApprovedByAll(prev => ({
+          ...prev,
+          [dishId]: membersCountRollback > 0 && prevApprovals.length >= membersCountRollback
+        }))
+      }
       showToast.error(error instanceof Error ? error.message : 'Failed to remove approval')
     }
   }
