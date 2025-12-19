@@ -72,10 +72,27 @@ export async function getHolidayGroupBundle(groupId: string) {
       }, {} as Record<string, boolean>)
     }
 
+    // Подтягиваем данные пользователей (имя/аватар) для участников
+    let membersWithUsers = membersRes.data || []
+    if (membersWithUsers.length > 0) {
+      const userIds = membersWithUsers.map(m => m.telegram_id)
+      const { data: users } = await supabase
+        .from('users')
+        .select('telegram_id, first_name, username, photo_url')
+        .in('telegram_id', userIds)
+
+      if (users && users.length > 0) {
+        membersWithUsers = membersWithUsers.map(member => ({
+          ...member,
+          users: users.find(u => u.telegram_id === member.telegram_id)
+        }))
+      }
+    }
+
     return {
       auth: true,
       dishes,
-      members: membersRes.data || [],
+      members: membersWithUsers,
       inviteCode: inviteRes.data?.invite_code || null,
       approvalsMap,
       approvedByAll,

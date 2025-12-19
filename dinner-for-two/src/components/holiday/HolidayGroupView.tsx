@@ -59,6 +59,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const [approvals, setApprovals] = useState<Record<string, any[]>>({})
   const [approvedByAll, setApprovedByAll] = useState<Record<string, boolean>>({})
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showMembersModal, setShowMembersModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'menu' | 'approved' | 'shopping'>('menu')
   const [ingredientEditorDish, setIngredientEditorDish] = useState<HolidayDish | null>(null)
   const [viewDish, setViewDish] = useState<HolidayDish | null>(null)
@@ -409,6 +410,54 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         onClose={() => setShowInviteModal(false)}
       />
 
+      {/* Список участников */}
+      {showMembersModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>{lang === 'ru' ? 'Участники группы' : 'Group members'}</CardTitle>
+              <Button variant="ghost" size="icon" onClick={() => setShowMembersModal(false)}>
+                ×
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3 max-h-[70vh] overflow-auto">
+              {members.length === 0 ? (
+                <div className="text-sm text-muted-foreground">
+                  {lang === 'ru' ? 'Участников нет' : 'No members yet'}
+                </div>
+              ) : (
+                members.map((m) => {
+                  const u = m.users || {}
+                  const name = u.first_name || u.username || `@${m.telegram_id}`
+                  const avatar = u.photo_url
+                  const initials = (u.first_name || u.username || '?').slice(0, 1).toUpperCase()
+                  return (
+                    <div key={m.id || m.telegram_id} className="flex items-center gap-3">
+                      {avatar ? (
+                        <div
+                          className="h-10 w-10 rounded-full bg-cover bg-center flex-shrink-0"
+                          style={{ backgroundImage: `url(${avatar})` }}
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-muted text-muted-foreground flex items-center justify-center flex-shrink-0 text-sm font-semibold">
+                          {initials}
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{name}</span>
+                        {u.username && (
+                          <span className="text-xs text-muted-foreground">@{u.username}</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <div className="flex flex-col h-screen bg-background">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
@@ -431,10 +480,14 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         {group.holiday_type && (
           <p className="text-sm text-muted-foreground mt-1">{group.holiday_type}</p>
         )}
-        <div className="flex items-center gap-2 mt-2">
+        <button
+          type="button"
+          onClick={() => setShowMembersModal(true)}
+          className="flex items-center gap-2 mt-2 text-left hover:opacity-80 transition"
+        >
           <Users className="w-4 h-4" />
           <span className="text-sm">{members.length} {lang === 'ru' ? 'участников' : 'members'}</span>
-        </div>
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto overflow-x-auto p-4">
