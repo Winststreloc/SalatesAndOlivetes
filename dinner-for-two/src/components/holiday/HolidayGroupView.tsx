@@ -148,17 +148,15 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
     setIsLoading(true)
     try {
       await Promise.all([mutateMembers(), mutateInviteCode(), mutateDishes()])
-      if (isMountedRef.current) {
-      }
     } catch (error) {
       console.error('Failed to load holiday group data:', error)
       showToast.error(error instanceof Error ? error.message : 'Failed to load data')
     } finally {
       if (isMountedRef.current) {
-        setIsLoading(isDishesLoading || isMembersLoading || isInviteLoading)
+        setIsLoading(false)
       }
     }
-  }, [mutateMembers, mutateInviteCode, mutateDishes, isDishesLoading, isMembersLoading, isInviteLoading])
+  }, [mutateMembers, mutateInviteCode, mutateDishes])
 
   useEffect(() => {
     isMountedRef.current = true
