@@ -4,10 +4,18 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { addDish, deleteDish, getDish, getDishes, moveDish, updateRecipe } from '@/app/actions'
 import { Dish } from '@/types'
 
-export function useDishes() {
-  const [dishes, setDishes] = useState<Dish[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+export function useDishes(initialDishes?: Dish[]) {
+  const [dishes, setDishes] = useState<Dish[]>(initialDishes ?? [])
+  const [isLoading, setIsLoading] = useState<boolean>(initialDishes === undefined)
   const isMountedRef = useRef(true)
+  const skipInitialFetch = initialDishes !== undefined
+
+  useEffect(() => {
+    if (skipInitialFetch) {
+      setDishes(initialDishes || [])
+      setIsLoading(false)
+    }
+  }, [initialDishes, skipInitialFetch])
 
   const refresh = useCallback(async () => {
     if (!isMountedRef.current) return
@@ -46,9 +54,11 @@ export function useDishes() {
 
   useEffect(() => {
     isMountedRef.current = true
-    refresh()
+    if (!skipInitialFetch) {
+      refresh()
+    }
     return () => { isMountedRef.current = false }
-  }, [refresh])
+  }, [refresh, skipInitialFetch])
 
   return {
     dishes,

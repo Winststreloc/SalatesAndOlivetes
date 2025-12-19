@@ -15,6 +15,7 @@ import {
   generateHolidayDishIngredients,
   addHolidayDishIngredient
 } from '@/app/actions'
+import { getHolidayGroupBundle } from '@/app/actions/holidayBundle'
 import { toggleHolidayIngredientsPurchased } from '@/app/actions/holidayIngredients'
 import { HolidayGroup, HolidayDish, HolidayDishCategory, RealtimePayload, HolidayDishApproval, HolidayDishIngredient } from '@/types'
 import { generateHolidayInviteLink } from '@/utils/telegram'
@@ -63,6 +64,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const [viewDish, setViewDish] = useState<HolidayDish | null>(null)
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
+  const lastDishesKeyRef = useRef<string>('')
   const { dishes: swrDishes, isLoading: isDishesLoading, mutate: mutateDishes } = useHolidayDishes(group.id)
   const { members: swrMembers, isLoading: isMembersLoading, mutate: mutateMembers } = useHolidayGroupMembers(group.id)
   const { inviteCode: swrInviteCode, isLoading: isInviteLoading, mutate: mutateInviteCode } = useHolidayInviteCode(group.id)
@@ -143,31 +145,51 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
     }
   })
 
-  const loadData = useCallback(async () => {
-    if (!isMountedRef.current) return
-    setIsLoading(true)
-    try {
-      await Promise.all([mutateMembers(), mutateInviteCode(), mutateDishes()])
-    } catch (error) {
-      console.error('Failed to load holiday group data:', error)
-      showToast.error(error instanceof Error ? error.message : 'Failed to load data')
-    }
-  }, [mutateMembers, mutateInviteCode, mutateDishes])
-
   useEffect(() => {
     isMountedRef.current = true
-    loadData()
+    const loadBundle = async () => {
+      setIsLoading(true)
+      try {
+        const bundle = await getHolidayGroupBundle(group.id)
+        if (!isMountedRef.current) return
+        if (bundle?.auth) {
+          setMembers(bundle.members || [])
+          setInviteCode(bundle.inviteCode || null)
+          setDishes(bundle.dishes || [])
+          setApprovals(bundle.approvalsMap || {})
+          setApprovedByAll(bundle.approvedByAll || {})
+        }
+      } catch (error) {
+        console.error('Failed to load holiday bundle:', error)
+        showToast.error(error instanceof Error ? error.message : 'Failed to load data')
+      } finally {
+        if (isMountedRef.current) {
+          setIsLoading(false)
+        }
+      }
+      // Фоновая актуализация SWR после бандла (не блокирует UI)
+      void mutateMembers()
+      void mutateInviteCode()
+      void mutateDishes()
+    }
+    void loadBundle()
     return () => {
       isMountedRef.current = false
     }
-  }, [loadData])
+  }, [group.id, mutateMembers, mutateInviteCode, mutateDishes])
 
-  // Подтягиваем блюда через SWR и рассчитываем approvals
+  // Подтягиваем блюда через SWR и при необходимости обновляем approvals (фоново)
   useEffect(() => {
     let cancelled = false
     const sync = async () => {
       if (!swrDishes) return
-      setDishes(swrDishes)
+      const key = swrDishes
+        .map(d => `${d.id}-${d.updated_at ?? ''}-${d.holiday_dish_ingredients?.length ?? 0}`)
+        .join('|')
+      if (key !== lastDishesKeyRef.current) {
+        lastDishesKeyRef.current = key
+        setDishes(swrDishes)
+      }
       try {
         const approvalsMap: Record<string, any[]> = {}
         const approvedByAllMap: Record<string, boolean> = {}
@@ -188,7 +210,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
         }
       }
     }
-    sync()
+    void sync()
     return () => {
       cancelled = true
     }
@@ -197,7 +219,9 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   // Синк участников
   useEffect(() => {
     if (!isMountedRef.current) return
-    setMembers(swrMembers || [])
+    if (swrMembers) {
+      setMembers(swrMembers)
+    }
   }, [swrMembers])
 
   // Синк инвайт-кода
@@ -510,7 +534,7 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
                 <HolidayShoppingListTab
                   dishes={dishes}
                   approvedByAll={approvedByAll}
-                onUpdated={loadData}
+                  onUpdated={() => void mutateDishes()}
                 onToggleIngredient={handleToggleIngredients}
                 />
               </TabsContent>

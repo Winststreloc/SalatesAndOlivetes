@@ -10,5 +10,7 @@ export * from './holidayDishes'
 export * from './holidayApprovals'
 export * from './holidayIngredients'
 export { generateHolidayIdeas } from './ai'
+export * from './dashboardBundle'
+export * from './holidayBundle'
 
 

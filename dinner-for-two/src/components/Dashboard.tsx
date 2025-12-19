@@ -30,6 +30,7 @@ import { HolidayGroupsList } from './holiday/HolidayGroupsList'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Skeleton } from './ui/skeleton'
 import type { PlanTabProps } from './dashboard/PlanTab'
+import { getDashboardBundle } from '@/app/actions/dashboardBundle'
 
 const PlanTab = dynamic<PlanTabProps>(
   () => import('./dashboard/PlanTab').then(m => m.PlanTab),
@@ -72,6 +73,8 @@ export function Dashboard() {
   const { t, lang } = useLang()
   const { coupleId, logout, user } = useAuth()
   const [tab, setTab] = useState<TabType>('plan')
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [initialDishes, setInitialDishes] = useState<Dish[]>([])
   const [showHolidayGroups, setShowHolidayGroups] = useState(false)
   const [selectedHolidayGroup, setSelectedHolidayGroup] = useState<HolidayGroup | null>(null)
   const [showInvite, setShowInvite] = useState(false)
@@ -96,7 +99,7 @@ export function Dashboard() {
   const recentlyAddedDishesRef = useRef<Set<string>>(new Set())
 
   // Use custom hooks
-  const { dishes, setDishes, isLoading: isLoadingDishes, refresh: refreshDishes } = useDishes()
+  const { dishes, setDishes, isLoading: isLoadingDishes, refresh: refreshDishes } = useDishes(initialDishes)
   const { preferences, setPreferences, isLoading: isLoadingPreferences, save: savePreferences } = useCoupleSettings(coupleId)
   const { shoppingList, categorizedList } = useShoppingList(dishes, manualIngredients)
 
@@ -208,20 +211,43 @@ export function Dashboard() {
 
   useEffect(() => {
     isMountedRef.current = true
+    const loadInitial = async () => {
+      if (!coupleId) {
+        setInitialLoading(false)
+        return
+      }
+      setInitialLoading(true)
+      try {
+        const bundle = await getDashboardBundle()
+        if (!isMountedRef.current) return
+        if (bundle?.auth) {
+          setInitialDishes(bundle.dishes || [])
+          setManualIngredients(bundle.manualIngredients || [])
+          setInviteCode(bundle.inviteCode || null)
+          setHasPartnerUser(bundle.hasPartner ?? null)
+          if (bundle.preferences) {
+            setPreferences(bundle.preferences as any)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load initial dashboard bundle:', error)
+      } finally {
+        if (isMountedRef.current) {
+          setInitialLoading(false)
+        }
+      }
+    }
+    void loadInitial()
+
     return () => {
       isMountedRef.current = false
     }
-  }, [])
+  }, [coupleId, setPreferences])
 
   useEffect(() => {
-    if (!coupleId) return
-    Promise.all([
-      refreshDishes(),
-      loadInviteCode(),
-      loadManualIngredients(),
-      checkHasPartner()
-    ]).catch(error => console.error('Failed to load initial data:', error))
-  }, [coupleId, refreshDishes, loadInviteCode, loadManualIngredients, checkHasPartner])
+    if (!coupleId || !isMountedRef.current) return
+    if (!inviteCode) void loadInviteCode()
+  }, [coupleId, inviteCode, loadInviteCode])
 
   const orderedDates = useMemo(() => getWeekDates(), [])
 
@@ -523,6 +549,8 @@ export function Dashboard() {
     }
   }, [showHolidayGroups, searchParams, router, pathname])
 
+  const isBundleLoading = initialLoading || isLoadingDishes
+
   // Если показываем holiday группы, рендерим их вместо обычного Dashboard
   if (showHolidayGroups) {
     if (selectedHolidayGroup) {
@@ -634,7 +662,7 @@ export function Dashboard() {
         {tab === 'plan' && (
           <PlanTab
             dishes={dishes}
-            isLoading={isLoadingDishes}
+            isLoading={isBundleLoading}
             orderedDates={orderedDates}
             addingDay={addingDay}
             selectedDish={selectedDish}
