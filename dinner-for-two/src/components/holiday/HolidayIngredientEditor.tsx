@@ -34,13 +34,28 @@ export function HolidayIngredientEditor({ dish, isOpen, onClose, onUpdated, onIn
 
   const handleAdd = async () => {
     if (!newIngredient.name.trim()) return
+    const name = newIngredient.name.trim()
+    const optimistic: HolidayDishIngredient = {
+      id: `temp-${Date.now()}`,
+      holiday_dish_id: dish.id,
+      name,
+      amount: newIngredient.amount || '',
+      unit: newIngredient.unit || '',
+      is_purchased: false,
+    }
+    const prev = ingredients
+    const next = [...ingredients, optimistic]
+    setIngredients(next)
+    onIngredientsChange?.(dish.id, next)
     setAdding(true)
     try {
-      await addHolidayDishIngredient(dish.id, newIngredient.name.trim(), newIngredient.amount, newIngredient.unit)
+      await addHolidayDishIngredient(dish.id, name, newIngredient.amount, newIngredient.unit)
       setNewIngredient({ name: '', amount: '', unit: '' })
       await onUpdated()
       showToast.success(lang === 'ru' ? 'Ингредиент добавлен' : 'Ingredient added')
     } catch (e) {
+      setIngredients(prev)
+      onIngredientsChange?.(dish.id, prev)
       showToast.error(e instanceof Error ? e.message : 'Failed to add ingredient')
     } finally {
       setAdding(false)
