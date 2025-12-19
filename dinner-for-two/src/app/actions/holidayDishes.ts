@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag, unstable_cache } from 'next/cache'
-import { createServerSideClient } from '@/lib/supabase-server'
+import { createServerSideClient, createServiceRoleClient } from '@/lib/supabase-server'
 import { getUserFromSession } from '@/utils/auth'
 import { handleError, createErrorContext } from '@/utils/errorHandler'
 
@@ -78,7 +78,7 @@ export async function getHolidayDishes(holidayGroupId: string) {
   const tag = `holiday-group-${holidayGroupId}`
   const getDishesCached = unstable_cache(
     async (groupId: string, telegramId: number) => {
-      const supabase = await createServerSideClient()
+      const supabase = createServiceRoleClient()
 
       const { data: member } = await supabase
         .from('holiday_members')

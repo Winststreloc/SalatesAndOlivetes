@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export async function createServerSideClient() {
@@ -28,4 +29,10 @@ export async function createServerSideClient() {
       },
     }
   )
+}
+
+// Service role client without cookies — safe to use inside unstable_cache
+export function createServiceRoleClient() {
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, supabaseKey)
 }
