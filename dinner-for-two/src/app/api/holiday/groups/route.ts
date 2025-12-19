@@ -1,7 +1,9 @@
-'use server'
-
 import { NextResponse } from 'next/server'
 import { getHolidayGroups } from '@/app/actions/holidayGroups'
+
+// Ensure Node runtime (Supabase client) and disable static caching for auth-bound data
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
