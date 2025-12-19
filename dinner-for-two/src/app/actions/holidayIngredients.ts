@@ -116,7 +116,7 @@ export async function updateHolidayDishIngredient(ingredientId: string, name: st
     throw error
   }
 
-  const groupId = ingredient.holiday_dishes?.[0]?.holiday_group_id
+  const groupId = (ingredient as any)?.holiday_dishes?.holiday_group_id ?? (ingredient as any)?.holiday_dishes?.[0]?.holiday_group_id
   if (!groupId) {
     const error = new Error('Ingredient does not belong to a holiday group')
     handleError(error, createErrorContext('updateHolidayDishIngredient', {
@@ -200,7 +200,7 @@ export async function deleteHolidayDishIngredient(ingredientId: string) {
     throw error
   }
 
-  const groupId = ingredient.holiday_dishes?.[0]?.holiday_group_id
+  const groupId = (ingredient as any)?.holiday_dishes?.holiday_group_id ?? (ingredient as any)?.holiday_dishes?.[0]?.holiday_group_id
   if (!groupId) {
     const error = new Error('Ingredient does not belong to a holiday group')
     handleError(error, createErrorContext('deleteHolidayDishIngredient', {
@@ -283,7 +283,7 @@ export async function toggleHolidayIngredientPurchased(ingredientId: string, isP
   }
 
   // Проверить, является ли пользователь участником группы
-  const holidayGroupId = ingredient.holiday_dishes?.[0]?.holiday_group_id
+  const holidayGroupId = (ingredient as any)?.holiday_dishes?.holiday_group_id ?? (ingredient as any)?.holiday_dishes?.[0]?.holiday_group_id
   if (!holidayGroupId) {
     const error = new Error('Ingredient does not belong to a holiday group')
     handleError(error, createErrorContext('toggleHolidayIngredientPurchased', {
@@ -360,7 +360,7 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
   // Проверить, что все ингредиенты принадлежат группам, в которых пользователь является участником
   const groupIds = [...new Set(
     ingredients
-      .map(ing => ing.holiday_dishes?.[0]?.holiday_group_id)
+      .map(ing => (ing as any)?.holiday_dishes?.holiday_group_id ?? (ing as any)?.holiday_dishes?.[0]?.holiday_group_id)
       .filter((id): id is string => Boolean(id))
   )]
   if (groupIds.length === 0) return
@@ -379,7 +379,7 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
   const memberGroupIds = new Set(members.map(m => m.holiday_group_id))
   const validIngredientIds = ingredients
     .filter(ing => {
-      const groupId = ing.holiday_dishes?.[0]?.holiday_group_id
+      const groupId = (ing as any)?.holiday_dishes?.holiday_group_id ?? (ing as any)?.holiday_dishes?.[0]?.holiday_group_id
       return groupId ? memberGroupIds.has(groupId) : false
     })
     .map(ing => ing.id)
@@ -403,7 +403,7 @@ export async function toggleHolidayIngredientsPurchased(ingredientIds: string[],
   }
 
   const tags = ingredients
-    ?.map(ing => ing.holiday_dishes?.[0]?.holiday_group_id)
+    ?.map(ing => (ing as any)?.holiday_dishes?.holiday_group_id ?? (ing as any)?.holiday_dishes?.[0]?.holiday_group_id)
     .filter((id): id is string => Boolean(id))
     .map(id => `holiday-group-${id}`) || []
 

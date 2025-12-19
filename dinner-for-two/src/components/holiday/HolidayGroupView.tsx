@@ -151,10 +151,6 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
     } catch (error) {
       console.error('Failed to load holiday group data:', error)
       showToast.error(error instanceof Error ? error.message : 'Failed to load data')
-    } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false)
-      }
     }
   }, [mutateMembers, mutateInviteCode, mutateDishes])
 

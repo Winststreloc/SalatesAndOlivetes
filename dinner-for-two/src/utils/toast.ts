@@ -1,7 +1,11 @@
 import { toast } from 'sonner'
 
+// Avoid calling toast in SSR / server actions
+const isBrowser = typeof window !== 'undefined'
+
 // Some environments (SSR / build) may not have toast methods attached; guard usage
 function callSafe(method: any, fallback: any, message: string) {
+  if (!isBrowser) return
   try {
     if (typeof method === 'function') {
       return method(message)
