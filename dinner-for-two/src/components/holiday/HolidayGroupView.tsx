@@ -65,6 +65,8 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
   const isMountedRef = useRef(true)
   const lastDishesKeyRef = useRef<string>('')
+  const lastApprovalsKeyRef = useRef<string>('')
+  const lastMembersKeyRef = useRef<string>('')
   const { dishes: swrDishes, isLoading: isDishesLoading, mutate: mutateDishes } = useHolidayDishes(group.id)
   const { members: swrMembers, isLoading: isMembersLoading, mutate: mutateMembers } = useHolidayGroupMembers(group.id)
   const { inviteCode: swrInviteCode, isLoading: isInviteLoading, mutate: mutateInviteCode } = useHolidayInviteCode(group.id)
@@ -178,41 +180,15 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
     }
   }, [group.id, mutateMembers, mutateInviteCode, mutateDishes])
 
-  // Подтягиваем блюда через SWR и при необходимости обновляем approvals (фоново)
+  // Фоновый синк блюд из SWR без повторных серверных вызовов approvals
   useEffect(() => {
-    let cancelled = false
-    const sync = async () => {
-      if (!swrDishes) return
-      const key = swrDishes
-        .map(d => `${d.id}-${d.updated_at ?? ''}-${d.holiday_dish_ingredients?.length ?? 0}`)
-        .join('|')
-      if (key !== lastDishesKeyRef.current) {
-        lastDishesKeyRef.current = key
-        setDishes(swrDishes)
-      }
-      try {
-        const approvalsMap: Record<string, any[]> = {}
-        const approvedByAllMap: Record<string, boolean> = {}
-        for (const dish of swrDishes) {
-          const dishApprovals = await getHolidayDishApprovals(dish.id)
-          approvalsMap[dish.id] = dishApprovals
-          approvedByAllMap[dish.id] = await isHolidayDishApprovedByAll(dish.id)
-        }
-        if (!cancelled && isMountedRef.current) {
-          setApprovals(approvalsMap)
-          setApprovedByAll(approvedByAllMap)
-        }
-      } catch (error) {
-        console.error('Failed to load approvals', error)
-      } finally {
-        if (!cancelled && isMountedRef.current) {
-          setIsLoading(false)
-        }
-      }
-    }
-    void sync()
-    return () => {
-      cancelled = true
+    if (!swrDishes) return
+    const key = swrDishes
+      .map(d => `${d.id}-${d.updated_at ?? ''}-${d.holiday_dish_ingredients?.length ?? 0}`)
+      .join('|')
+    if (key !== lastDishesKeyRef.current) {
+      lastDishesKeyRef.current = key
+      setDishes(swrDishes)
     }
   }, [swrDishes])
 
@@ -220,9 +196,31 @@ export function HolidayGroupView({ group, onBack }: HolidayGroupViewProps) {
   useEffect(() => {
     if (!isMountedRef.current) return
     if (swrMembers) {
-      setMembers(swrMembers)
+      const key = swrMembers.map(m => m.id ?? `${m.telegram_id || ''}-${m.holiday_group_id || ''}`).join('|')
+      if (key !== lastMembersKeyRef.current) {
+        lastMembersKeyRef.current = key
+        setMembers(swrMembers)
+      }
     }
   }, [swrMembers])
+
+  // Пересчёт approvedByAll при изменении approvals или числа участников
+  useEffect(() => {
+    if (!isMountedRef.current) return
+    const membersCount = members.length
+    const nextApproved = Object.entries(approvals).reduce((acc, [dishId, list]) => {
+      const count = Array.isArray(list) ? list.length : 0
+      acc[dishId] = membersCount > 0 && count >= membersCount
+      return acc
+    }, {} as Record<string, boolean>)
+    const approvedKey = Object.entries(nextApproved)
+      .map(([id, flag]) => `${id}:${flag ? 1 : 0}`)
+      .join('|')
+    if (approvedKey !== lastApprovalsKeyRef.current) {
+      lastApprovalsKeyRef.current = approvedKey
+      setApprovedByAll(nextApproved)
+    }
+  }, [approvals, members.length])
 
   // Синк инвайт-кода
   useEffect(() => {
